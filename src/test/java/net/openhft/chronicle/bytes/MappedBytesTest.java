@@ -102,7 +102,7 @@ public class MappedBytesTest {
             bytesR.readLimit(wp);
 
             Assert.assertEquals(text, bytesR.toString());
-            from.release();
+            from.releaseLast();
         }
     }
 
@@ -122,7 +122,7 @@ public class MappedBytesTest {
             bytesR.readLimit(wp);
 
             Assert.assertEquals(text, bytesR.toString());
-            from.release();
+            from.releaseLast();
         }
     }
 
@@ -144,7 +144,7 @@ public class MappedBytesTest {
             bytesR.readLimit(wp);
             bytesR.readPosition(offset);
             Assert.assertEquals(text, bytesR.toString());
-            from.release();
+            from.releaseLast();
         }
     }
 
@@ -166,7 +166,7 @@ public class MappedBytesTest {
             bytesR.readLimit(wp);
             bytesR.readPosition(offset);
             Assert.assertEquals(text, bytesR.toString());
-            from.release();
+            from.releaseLast();
         }
     }
 
@@ -188,7 +188,7 @@ public class MappedBytesTest {
             bytesR.readPosition(offset);
             String actual = bytesR.toString();
             Assert.assertEquals(text.substring(shift), actual);
-            from.release();
+            from.releaseLast();
         }
     }
 
@@ -210,7 +210,7 @@ public class MappedBytesTest {
             bytesR.readPosition(offset);
             String actual = bytesR.toString();
             Assert.assertEquals(text.substring(shift), actual);
-            from.release();
+            from.releaseLast();
         }
     }
 
@@ -249,8 +249,8 @@ public class MappedBytesTest {
         bytes.writePosition(0);
         bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
 
-        bytes2.release();
-        bytes.release();
+        bytes2.releaseLast();
+        bytes.releaseLast();
 
     }
 
@@ -289,8 +289,8 @@ public class MappedBytesTest {
         bytes.writePosition(0);
         bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
 
-        bytes2.release();
-        bytes.release();
+        bytes2.releaseLast();
+        bytes.releaseLast();
 
     }
 
@@ -329,8 +329,8 @@ public class MappedBytesTest {
         bytes.writePosition(0);
         bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
 
-        bytes2.release();
-        bytes.release();
+        bytes2.releaseLast();
+        bytes.releaseLast();
 
     }
 
@@ -340,7 +340,7 @@ public class MappedBytesTest {
         assertFalse(bytes.isBackingFileReadOnly());
         bytes.writeUtf8(null); // used to blow up.
         assertNull(bytes.readUtf8());
-        bytes.release();
+        bytes.releaseLast();
     }
 
     @Test
@@ -353,7 +353,7 @@ public class MappedBytesTest {
 
             assertTrue(mappedBytes.
                     isBackingFileReadOnly());
-            mappedBytes.release();
+            mappedBytes.releaseLast();
         }
     }
 
@@ -367,7 +367,7 @@ public class MappedBytesTest {
             mb.realCapacity();
             assertTrue(Thread.currentThread().isInterrupted());
         } finally {
-            mb.release();
+            mb.releaseLast();
         }
     }
 
@@ -427,7 +427,7 @@ public class MappedBytesTest {
                 assertEquals(chunkSize, mb.bytesStore().start());
             }
         } finally {
-            csb.release();
+            csb.releaseLast();
         }
         IOTools.deleteDirWithFiles(tmpfile, 2);
     }
@@ -439,13 +439,13 @@ public class MappedBytesTest {
         IntStream.range(0, count)
                 .parallel()
                 .forEach(i -> {
-                    try (MappedBytes mb = MappedBytes.mappedBytes(tmpfile, 256 << 10)) {
+                    try (MappedBytes mb = MappedBytes.mappedBytes(new File(tmpfile), 256 << 10)) {
                         mb.addAndGetLong(0, 1);
                     } catch (FileNotFoundException e) {
                         Jvm.rethrow(e);
                     }
                 });
-        try (MappedBytes mb = MappedBytes.mappedBytes(tmpfile, 256 << 10)) {
+        try (MappedBytes mb = MappedBytes.mappedBytes(new File(tmpfile), 256 << 10)) {
             assertEquals(count, mb.readVolatileLong(0));
         }
         IOTools.deleteDirWithFiles(tmpfile, 2);

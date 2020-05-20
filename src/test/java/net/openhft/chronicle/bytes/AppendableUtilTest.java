@@ -34,7 +34,7 @@ public class AppendableUtilTest {
         } catch (IllegalArgumentException iae) {
             // expected.
         }
-        b.release();
+        b.releaseLast();
     }
 
     @SuppressWarnings("rawtypes")

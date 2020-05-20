@@ -57,7 +57,7 @@ public class MappedFile implements ReferenceCounted {
     private final long overlapSize;
     private final List<WeakReference<MappedBytesStore>> stores = new ArrayList<>();
     private final AtomicBoolean closed = new AtomicBoolean();
-    private final ReferenceCounter refCount = ReferenceCounter.onReleased(this::performRelease);
+    private final ReferenceCounted refCount = ReferenceCounter.onReleased(this::performRelease);
     private final long capacity;
     @NotNull
     private final File file;
@@ -232,7 +232,7 @@ public class MappedFile implements ReferenceCounted {
                     try (@NotNull RandomAccessFile raf = new CleaningRandomAccessFile(file, "rw")) {
                         @NotNull final MappedFile mappedFile = new MappedFile(file, raf, mapAlignment, 0, mapAlignment * chunks, false);
                         warmup0(mapAlignment, chunks, mappedFile);
-                        mappedFile.release();
+                        mappedFile.releaseLast();
                     }
                     Thread.yield();
                     Files.delete(file.toPath());
@@ -251,8 +251,8 @@ public class MappedFile implements ReferenceCounted {
                                 final int chunks,
                                 @NotNull final MappedFile mappedFile) throws IOException {
         for (int i = 0; i < chunks; i++) {
-            mappedFile.acquireBytesForRead(i * mapAlignment).release();
-            mappedFile.acquireBytesForWrite(i * mapAlignment).release();
+            mappedFile.acquireBytesForRead(i * mapAlignment).releaseLast();
+            mappedFile.acquireBytesForWrite(i * mapAlignment).releaseLast();
         }
     }
 
@@ -288,19 +288,6 @@ public class MappedFile implements ReferenceCounted {
     }
 
     @NotNull
-    public MappedFile withSizes(long chunkSize, long overlapSize) {
-        chunkSize = OS.mapAlign(chunkSize);
-        overlapSize = OS.mapAlign(overlapSize);
-        if (chunkSize == this.chunkSize && overlapSize == this.overlapSize)
-            return this;
-        try {
-            return new MappedFile(file, raf, chunkSize, overlapSize, capacity, readOnly);
-        } finally {
-            release();
-        }
-    }
-
-    @NotNull
     public File file() {
         return file;
     }
@@ -312,8 +299,8 @@ public class MappedFile implements ReferenceCounted {
     }
 
     @NotNull
-    public synchronized  <T extends MappedBytesStore> T acquireByteStore(final long position,
-                                                           @NotNull final MappedBytesStoreFactory<T> mappedBytesStoreFactory)
+    public synchronized <T extends MappedBytesStore> T acquireByteStore(final long position,
+                                                                        @NotNull final MappedBytesStoreFactory<T> mappedBytesStoreFactory)
             throws IOException, IllegalArgumentException, IllegalStateException {
         if (closed.get())
             throw new IOException("Closed");
@@ -328,7 +315,7 @@ public class MappedFile implements ReferenceCounted {
         final WeakReference<MappedBytesStore> mbsRef = stores.get(chunk);
         if (mbsRef != null) {
             @NotNull final T mbs = (T) mbsRef.get();
-            if (mbs != null && mbs.tryReserve()) {
+            if (mbs != null && mbs.refCount() > 0) {
                 return mbs;
             }
         }
@@ -373,7 +360,6 @@ public class MappedFile implements ReferenceCounted {
         if (time2 > 5_000_000L)
             Jvm.warn().on(getClass(), "Took " + time2 / 1000L + " us to add mapping for " + file());
 
-//            new Throwable("chunk "+chunk).printStackTrace();
         return mbs2;
 
     }
@@ -387,7 +373,6 @@ public class MappedFile implements ReferenceCounted {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         final Bytes bytes = mbs.bytesForRead();
         bytes.readPositionUnlimited(position);
-        mbs.release();
         return bytes;
     }
 
@@ -403,7 +388,6 @@ public class MappedFile implements ReferenceCounted {
         @Nullable MappedBytesStore mbs = acquireByteStore(position);
         @NotNull Bytes bytes = mbs.bytesForWrite();
         bytes.writePosition(position);
-        mbs.release();
         return bytes;
     }
 
@@ -415,23 +399,28 @@ public class MappedFile implements ReferenceCounted {
     }
 
     @Override
-    public void reserve() throws IllegalStateException {
-        refCount.reserve();
+    public void reserve(ReferenceOwner id) throws IllegalStateException {
+        refCount.reserve(id);
     }
 
     @Override
-    public void release() throws IllegalStateException {
-        refCount.release();
+    public void release(ReferenceOwner id) throws IllegalStateException {
+        refCount.release(id);
     }
 
     @Override
-    public long refCount() {
-        return refCount.get();
+    public void releaseLast(ReferenceOwner id) {
+        refCount.releaseLast(id);
     }
 
     @Override
-    public boolean tryReserve() {
-        return refCount.tryReserve();
+    public boolean tryReserve(ReferenceOwner id) {
+        return refCount.tryReserve(id);
+    }
+
+    @Override
+    public int refCount() {
+        return refCount.refCount();
     }
 
     private synchronized void performRelease() {
@@ -444,12 +433,12 @@ public class MappedFile implements ReferenceCounted {
                 if (mbs != null) {
                     // this MappedFile is the only referrer to the MappedBytesStore at this point,
                     // so ensure that it is released
-                    while (mbs.refCount() != 0) {
-                        try {
-                            mbs.release();
-                        } catch (IllegalStateException e) {
-                            Jvm.debug().on(getClass(), e);
-                        }
+                    try {
+                        if (mbs.refCount() > 0)
+                            mbs.releaseLast(this);
+                    } catch (IllegalStateException e) {
+                        if (mbs.refCount() > 0)
+                            throw e;
                     }
                 }
                 // Dereference released entities

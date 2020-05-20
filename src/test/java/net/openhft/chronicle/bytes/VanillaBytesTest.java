@@ -43,6 +43,6 @@ public class VanillaBytesTest {
         bytes2.writeByte(bytes2.start() + 1, 99);
         assertEquals(99, bytes.readByte(99));
 
-        bytes.release();
+        bytes.releaseLast();
     }
 }

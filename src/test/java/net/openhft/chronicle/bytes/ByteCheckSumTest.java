@@ -10,14 +10,12 @@ public class ByteCheckSumTest {
     public void test() {
         Bytes bytes = Bytes.allocateDirect(32);
         doTest(bytes);
-        bytes.release();
     }
 
     @Test
     public void testHeap() {
         Bytes bytes = Bytes.elasticHeapByteBuffer(32);
         doTest(bytes);
-        bytes.release();
     }
 
     private void doTest(Bytes bytes) {
@@ -27,5 +25,6 @@ public class ByteCheckSumTest {
         assertEquals(('b' + 'c' + 'd') & 0xff, bytes.byteCheckSum(1, 4));
         assertEquals(('c' + 'd') & 0xff, bytes.byteCheckSum(2, 4));
         assertEquals(('c') & 0xff, bytes.byteCheckSum(2, 3));
+        bytes.releaseLast();
     }
 }

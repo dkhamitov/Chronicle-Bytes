@@ -19,6 +19,7 @@ package net.openhft.chronicle.bytes;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.Maths;
 import net.openhft.chronicle.core.OS;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.util.ObjectUtils;
 import net.openhft.chronicle.core.util.StringUtils;
@@ -58,7 +59,7 @@ public interface Bytes<Underlying> extends
      * which will be resized as required.
      *
      * @return a new elastic wrapper for a direct (off-heap) ByteBuffer with a default capacity
-     *         which will be resized as required
+     * which will be resized as required
      */
     @NotNull
     static Bytes<ByteBuffer> elasticByteBuffer() {
@@ -70,9 +71,8 @@ public interface Bytes<Underlying> extends
      * the given {@code initialCapacity} which will be resized as required.
      *
      * @param initialCapacity the initial non-negative capacity given in bytes
-     *
      * @return a new elastic wrapper for a direct (off-heap) ByteBuffer with
-     *         the given {@code initialCapacity} which will be resized as required
+     * the given {@code initialCapacity} which will be resized as required
      */
     @NotNull
     static Bytes<ByteBuffer> elasticByteBuffer(int initialCapacity) {
@@ -85,11 +85,10 @@ public interface Bytes<Underlying> extends
      * to the given {@code maxSize}.
      *
      * @param initialCapacity the initial non-negative capacity given in bytes
-     * @param maxCapacity the max capacity given in bytes equal or greater than initialCapacity
-     *
+     * @param maxCapacity     the max capacity given in bytes equal or greater than initialCapacity
      * @return a new elastic wrapper for a direct (off-heap) ByteBuffer with
-     *         the given {@code initialCapacity} which will be resized as required up
-     *         to the given {@code maxSize}
+     * the given {@code initialCapacity} which will be resized as required up
+     * to the given {@code maxSize}
      */
     @NotNull
     static Bytes<ByteBuffer> elasticByteBuffer(int initialCapacity, int maxCapacity) {
@@ -97,7 +96,7 @@ public interface Bytes<Underlying> extends
         try {
             return bs.bytesForWrite();
         } finally {
-            bs.release();
+            bs.release(INIT); // but not the last.
         }
     }
 
@@ -106,9 +105,8 @@ public interface Bytes<Underlying> extends
      * the given {@code initialCapacity} which will be resized as required.
      *
      * @param initialCapacity the initial non-negative capacity given in bytes
-     *
      * @return a new elastic wrapper for a heap ByteBuffer with
-     *         the given {@code initialCapacity} which will be resized as required
+     * the given {@code initialCapacity} which will be resized as required
      */
     @NotNull
     static Bytes<ByteBuffer> elasticHeapByteBuffer(int initialCapacity) {
@@ -116,7 +114,7 @@ public interface Bytes<Underlying> extends
         try {
             return NativeBytes.wrapWithNativeBytes(bs);
         } finally {
-            bs.release();
+            bs.release(INIT);
         }
     }
 
@@ -177,7 +175,7 @@ public interface Bytes<Underlying> extends
             bbb.readPosition(byteBuffer.position());
             return bbb;
         } finally {
-            bs.release();
+            bs.release(INIT);
         }
     }
 
@@ -238,7 +236,7 @@ public interface Bytes<Underlying> extends
             bbb.writeLimit(byteBuffer.limit());
             return bbb;
         } finally {
-            bs.release();
+            bs.release(INIT);
         }
     }
 
@@ -293,7 +291,7 @@ public interface Bytes<Underlying> extends
         try {
             return bs.bytesForRead();
         } finally {
-            bs.release();
+            bs.release(INIT);
         }
     }
 
@@ -348,13 +346,13 @@ public interface Bytes<Underlying> extends
         try {
             return bs.bytesForWrite();
         } finally {
-            bs.release();
+            bs.release(INIT);
         }
     }
 
     /**
      * Convert text to bytes using ISO-8859-1 encoding and return a Bytes ready for reading.
-     *
+     * <p>
      * Note: this returns a direct Bytes now
      *
      * @param text to convert
@@ -375,12 +373,17 @@ public interface Bytes<Underlying> extends
      */
     @NotNull
     static Bytes<?> from(@NotNull String text) {
-        return NativeBytesStore.from(text).bytesForRead();
+        NativeBytesStore from = NativeBytesStore.from(text);
+        try {
+            return from.bytesForRead();
+        } finally {
+            from.release(INIT);
+        }
     }
 
     /**
      * Convert text to bytes using ISO-8859-1 encoding and return a Bytes ready for reading.
-     *
+     * <p>
      * Note: this returns a heap Bytes
      *
      * @param text to convert
@@ -396,9 +399,8 @@ public interface Bytes<Underlying> extends
      * memory with the given {@code capacity}.
      *
      * @param capacity the non-negative capacity given in bytes
-     *
      * @return a new fix sized wrapper for native (64-bit address)
-     *         memory with the given {@code capacity}
+     * memory with the given {@code capacity}
      */
     @NotNull
     static VanillaBytes<Void> allocateDirect(long capacity) throws IllegalArgumentException {
@@ -406,7 +408,7 @@ public interface Bytes<Underlying> extends
         try {
             return new VanillaBytes<>(bs);
         } finally {
-            bs.release();
+            bs.release(INIT);
         }
     }
 
@@ -415,7 +417,7 @@ public interface Bytes<Underlying> extends
      * memory with zero initial capacity which will be resized as required.
      *
      * @return a new elastic wrapper for native (64-bit address)
-     *         memory with zero initial capacity which will be resized as required
+     * memory with zero initial capacity which will be resized as required
      */
     @NotNull
     static NativeBytes<Void> allocateElasticDirect() {
@@ -427,9 +429,8 @@ public interface Bytes<Underlying> extends
      * memory with the given {@code initialCapacity} which will be resized as required.
      *
      * @param initialCapacity the initial non-negative capacity given in bytes
-     *
      * @return a new elastic wrapper for native (64-bit address)
-     *         memory with the given {@code initialCapacity} which will be resized as required
+     * memory with the given {@code initialCapacity} which will be resized as required
      */
     @NotNull
     static NativeBytes<Void> allocateElasticDirect(long initialCapacity) throws IllegalArgumentException {
@@ -464,7 +465,8 @@ public interface Bytes<Underlying> extends
             // added because something is crashing the JVM
             return "<unknown>";
 
-        buffer.reserve();
+        ReferenceOwner usage = ReferenceOwner.temporary();
+        buffer.reserve(usage);
         try {
 
             if (buffer.readRemaining() == 0)
@@ -488,7 +490,7 @@ public interface Bytes<Underlying> extends
             }
             return builder.toString();
         } finally {
-            buffer.release();
+            buffer.release(usage);
         }
     }
 
@@ -530,9 +532,8 @@ public interface Bytes<Underlying> extends
      * the returned wrapper or vice versa.
      *
      * @param bytes array to copy
-     *
      * @return a new fix sized wrapper for native (64-bit address)
-     *         memory with the contents copied from the given {@code bytes} array
+     * memory with the contents copied from the given {@code bytes} array
      */
     @NotNull
     static VanillaBytes allocateDirect(@NotNull byte[] bytes) throws IllegalArgumentException {
@@ -605,6 +606,8 @@ public interface Bytes<Underlying> extends
     /**
      * Return a Bytes which is optionally unchecked.  This allows bounds checks to be turned off.
      * Note: this means that the result is no longer elastic, even if <code>this</code> is elastic.
+     * <p>
+     * This method assumes you want the original released and only retain the unchecked reference..
      *
      * @param unchecked if true, minimal bounds checks will be performed.
      * @return Bytes without bounds checking.
@@ -615,9 +618,13 @@ public interface Bytes<Underlying> extends
         if (unchecked) {
             if (isElastic())
                 Jvm.debug().on(getClass(), "Wrapping elastic bytes with unchecked() will require calling ensureCapacity() as needed!");
-            return start() == 0 && bytesStore().isDirectMemory() ?
-                    new UncheckedNativeBytes<>(this) :
-                    new UncheckedBytes<>(this);
+            try {
+                return start() == 0 && bytesStore().isDirectMemory() ?
+                        new UncheckedNativeBytes<>(this) :
+                        new UncheckedBytes<>(this);
+            } finally {
+                release(INIT);
+            }
         }
         return this;
     }
@@ -627,8 +634,7 @@ public interface Bytes<Underlying> extends
     }
 
     /**
-     * @inheritDoc
-     * <P>
+     * @inheritDoc <P>
      * If this Bytes {@link #isElastic()} the {@link #safeLimit()} can be
      * lower than the point it can safely write.
      */
@@ -643,8 +649,7 @@ public interface Bytes<Underlying> extends
     }
 
     /**
-     * @inheritDoc
-     * <P>
+     * @inheritDoc <P>
      * If this Bytes {@link #isElastic()} the {@link #realCapacity()} can be
      * lower than the virtual {@link #capacity()}.
      */

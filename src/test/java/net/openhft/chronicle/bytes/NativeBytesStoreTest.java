@@ -101,9 +101,9 @@ public class NativeBytesStoreTest {
             System.out.println("Encrypt/Decrypt took " + hist.toMicrosFormat());
         }
 
-        bytes.release();
-        enc.release();
-        dec.release();
+        bytes.releaseLast();
+        enc.releaseLast();
+        dec.releaseLast();
     }
 
     @Test
@@ -162,7 +162,7 @@ public class NativeBytesStoreTest {
         assertNotNull(bb2);
         assertNotSame(bb, bb2);
 
-        bbb.release();
+        bbb.releaseLast();
     }
 
     @Test
@@ -224,7 +224,7 @@ public class NativeBytesStoreTest {
         dst.writePosition(src.copyTo(dst));
         assertEquals(src, dst);
 
-        src.release();
-        dst.release();
+        src.releaseLast();
+        dst.releaseLast();
     }
 }

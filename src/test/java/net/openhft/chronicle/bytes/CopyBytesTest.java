@@ -42,9 +42,9 @@ public class CopyBytesTest {
         assertEquals((long) 'W' << 56L | 200L, toValidate.readLong(8));
         assertEquals((long) 'W' << 56L | 100L, toValidate.readLong(16));
 
-        toTest.release();
-        toCopy.release();
-        toValidate.release();
+        toTest.releaseLast();
+        toCopy.releaseLast();
+        toValidate.releaseLast();
     }
 
     @Test

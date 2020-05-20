@@ -2,6 +2,7 @@ package net.openhft.chronicle.bytes.ref;
 
 import net.openhft.chronicle.bytes.Byteable;
 import net.openhft.chronicle.bytes.BytesStore;
+import net.openhft.chronicle.core.ReferenceOwner;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,7 +11,7 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 
 @SuppressWarnings("rawtypes")
-public abstract class AbstractReference implements Byteable, Closeable {
+public abstract class AbstractReference implements Byteable, Closeable, ReferenceOwner {
 
     @Nullable
     protected BytesStore bytes;
@@ -38,16 +39,16 @@ public abstract class AbstractReference implements Byteable, Closeable {
 
     protected void acceptNewBytesStore(@NotNull final BytesStore bytes) {
         if (this.bytes != null) {
-            this.bytes.release();
+            this.bytes.release(this);
         }
         this.bytes = bytes.bytesStore();
-        this.bytes.reserve();
+        this.bytes.reserve(this);
     }
 
     @Override
     public void close() {
         if (this.bytes != null) {
-            this.bytes.release();
+            this.bytes.release(this);
             this.bytes = null;
         }
     }

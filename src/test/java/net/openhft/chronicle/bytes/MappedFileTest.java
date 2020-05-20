@@ -17,6 +17,8 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.core.OS;
+import net.openhft.chronicle.core.ReferenceCounted;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.threads.ThreadDump;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +30,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 
 public class MappedFileTest {
@@ -63,19 +64,30 @@ public class MappedFileTest {
         final long chunkSize = OS.mapAlign(64);
         final MappedFile mappedFile = MappedFile.mappedFile(file, 64);
         final MappedBytesStore first = mappedFile.acquireByteStore(1);
+        ReferenceOwner temp = ReferenceOwner.temporary();
+        first.reserve(temp);
 
-        assertThat(first.refCount(), is(1L));
+        assertEquals(2, first.refCount());
+        assertEquals(1, mappedFile.refCount());
 
         final MappedBytesStore second = mappedFile.acquireByteStore(1 + chunkSize);
+        second.reserve(temp);
 
-        assertThat(first.refCount(), is(1L));
-        assertThat(second.refCount(), is(1L));
+        assertEquals(2, first.refCount());
+        assertEquals(2, second.refCount());
+        assertEquals(1, mappedFile.refCount());
 
         final MappedBytesStore third = mappedFile.acquireByteStore(1 + chunkSize + chunkSize);
+        third.reserve(temp);
 
-        assertThat(first.refCount(), is(1L));
-        assertThat(second.refCount(), is(1L));
-        assertThat(third.refCount(), is(1L));
+        assertEquals(2, first.refCount());
+        assertEquals(2, second.refCount());
+        assertEquals(2, third.refCount());
+        assertEquals(1, mappedFile.refCount());
+        for (ReferenceCounted rc : new ReferenceCounted[]{first, second, third}) {
+            rc.release(temp);
+        }
+        mappedFile.releaseLast();
     }
 
     @SuppressWarnings("rawtypes")
@@ -88,7 +100,11 @@ public class MappedFileTest {
         @NotNull MappedFile mf = MappedFile.mappedFile(tmp, chunkSize, 0);
         assertEquals("refCount: 1", mf.referenceCounts());
 
+        ReferenceOwner temp = ReferenceOwner.temporary();
+
         @Nullable MappedBytesStore bs = mf.acquireByteStore(chunkSize + (1 << 10));
+        bs.reserve(temp);
+
         assertEquals(chunkSize, bs.start());
         assertEquals(chunkSize * 2, bs.capacity());
         Bytes bytes = bs.bytesForRead();
@@ -100,8 +116,8 @@ public class MappedFileTest {
         assertEquals(0L, bytes.readLong(chunkSize + (1 << 10)));
         Assert.assertFalse(bs.inside(chunkSize - (1 << 10)));
         Assert.assertFalse(bs.inside(chunkSize - 1));
-        Assert.assertTrue(bs.inside(chunkSize));
-        Assert.assertTrue(bs.inside(chunkSize * 2 - 1));
+        assertTrue(bs.inside(chunkSize));
+        assertTrue(bs.inside(chunkSize * 2 - 1));
         Assert.assertFalse(bs.inside(chunkSize * 2));
         try {
             bytes.readLong(chunkSize - (1 << 10));
@@ -116,17 +132,26 @@ public class MappedFileTest {
             // expected
         }
         assertEquals(1, mf.refCount());
-        assertEquals(2, bs.refCount());
-        assertEquals("refCount: 1, 0, 2", mf.referenceCounts());
+        assertEquals(3, bs.refCount());
+        assertEquals("refCount: 1, 0, 3", mf.referenceCounts());
 
+        ReferenceOwner temp2 = ReferenceOwner.temporary();
         @Nullable BytesStore bs2 = mf.acquireByteStore(chunkSize + (1 << 10));
+        bs2.reserve(temp2);
+
+        assertEquals(4, bs2.refCount());
+        assertEquals("refCount: 1, 0, 4", mf.referenceCounts());
+        bytes.releaseLast();
+
         assertEquals(3, bs2.refCount());
         assertEquals("refCount: 1, 0, 3", mf.referenceCounts());
-        bytes.release();
-        assertEquals(2, bs2.refCount());
-        assertEquals("refCount: 1, 0, 2", mf.referenceCounts());
 
-        mf.release();
+        bs2.release(temp2);
+        bs.release(temp);
+        assertEquals("refCount: 1, 0, 1", mf.referenceCounts());
+
+        mf.releaseLast();
+        assertEquals(0, bs2.refCount());
         assertEquals(0, bs.refCount());
         assertEquals(0, mf.refCount());
         assertEquals("refCount: 0, 0, 0", mf.referenceCounts());
@@ -144,7 +169,7 @@ public class MappedFileTest {
         }
 
         try (@NotNull MappedBytes bytes = MappedBytes.readOnly(file)) {
-            Assert.assertEquals(0x12345678L, bytes.readLong(3L << 30));
+            assertEquals(0x12345678L, bytes.readLong(3L << 30));
         }
     }
 
@@ -158,7 +183,7 @@ public class MappedFileTest {
             mf.actualSize();
             assertTrue(Thread.currentThread().isInterrupted());
         } finally {
-            mf.release();
+            mf.releaseLast();
         }
     }
 
@@ -170,8 +195,8 @@ public class MappedFileTest {
         MappedFile mappedFile = MappedFile.mappedFile(file, 1024, 256, 256, false);
         MappedFile mappedFile2 = MappedFile.mappedFile(file, 1024, 256, 256, false);
 
-        mappedFile.release();
-        mappedFile2.release();
+        mappedFile.releaseLast();
+        mappedFile2.releaseLast();
     }
 
     @After

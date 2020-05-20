@@ -88,7 +88,7 @@ public class BytesTextMethodTester<T> {
                 if (bytes.readRemaining() > 1)
                     bytes2.comment("## End Of Message");
             }
-            bytes.release();
+            bytes.releaseLast();
             bytes2.comment("## End Of Block");
         }
         bytes2.comment("## End Of Test");
@@ -98,7 +98,7 @@ public class BytesTextMethodTester<T> {
             expected = afterRun.apply(expected);
             actual = afterRun.apply(actual);
         }
-        bytes2.release();
+        bytes2.releaseLast();
         return this;
     }
 

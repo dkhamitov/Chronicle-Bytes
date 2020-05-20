@@ -30,7 +30,6 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
@@ -41,7 +40,6 @@ public class HeapBytesStore<Underlying>
         extends AbstractBytesStore<HeapBytesStore<Underlying>, Underlying> {
     @Nullable
     private static final Memory MEMORY = OS.memory();
-    private final AtomicLong refCount = new AtomicLong(1);
     @NotNull
     private final Object realUnderlyingObject;
     private final int dataOffset;
@@ -107,30 +105,8 @@ public class HeapBytesStore<Underlying>
     }
 
     @Override
-    public void reserve() {
-        refCount.incrementAndGet();
-    }
-
-    @Override
-    public void release() {
-        long value = refCount.decrementAndGet();
-        assert value >= 0 : "refCount=" + value;
-    }
-
-    @Override
-    public long refCount() {
-        return refCount.get();
-    }
-
-    @Override
-    public boolean tryReserve() {
-        for (; ; ) {
-            long value = refCount.get();
-            if (value <= 0)
-                return false;
-            if (refCount.compareAndSet(value, value + 1))
-                return true;
-        }
+    protected void performRelease() {
+        // nothing to do.
     }
 
     @Override

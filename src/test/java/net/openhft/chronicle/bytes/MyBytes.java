@@ -1,7 +1,6 @@
 package net.openhft.chronicle.bytes;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 @SuppressWarnings("rawtypes")
 class MyBytes implements BytesMarshallable, Closeable {
@@ -17,9 +16,9 @@ class MyBytes implements BytesMarshallable, Closeable {
     }
 
     @Override
-    public void close() throws IOException {
-        if (bytes1 != null) bytes1.release();
-        if (bytes2 != null) bytes2.release();
+    public void close() {
+        if (bytes1 != null) bytes1.releaseLast();
+        if (bytes2 != null) bytes2.releaseLast();
     }
 
     @Override

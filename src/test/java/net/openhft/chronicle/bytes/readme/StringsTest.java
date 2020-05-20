@@ -37,7 +37,7 @@ public class StringsTest {
         // assertSame(a, c); // uses a string pool
         assertSame(b, c); // uses a string pool
         assertSame(b, d); // uses a string pool
-        bytes.release();
+        bytes.releaseLast();
     }
 
     @Test
@@ -52,6 +52,6 @@ public class StringsTest {
         String b = bytes.readUtf8();
         assertEquals(null, a);
         assertEquals(null, b);
-        bytes.release();
+        bytes.releaseLast();
     }
 }

@@ -78,8 +78,8 @@ public class Bytes2Test {
             to.writeSome(from);
             assertEquals("World", from.toString());
         } finally {
-            from.release();
-            to.release();
+            from.releaseLast();
+            to.releaseLast();
         }
     }
 
@@ -94,8 +94,8 @@ public class Bytes2Test {
             to.writeSome(from);
             assertTrue("from: " + from, from.toString().startsWith("World "));
         } finally {
-            from.release();
-            to.release();
+            from.releaseLast();
+            to.releaseLast();
         }
     }
 
@@ -110,8 +110,8 @@ public class Bytes2Test {
             to.write(from);
             assertEquals(from.toString(), to.toString());
         } finally {
-            from.release();
-            to.release();
+            from.releaseLast();
+            to.releaseLast();
         }
     }
 
@@ -128,8 +128,8 @@ public class Bytes2Test {
             }
             assertEquals(0, from.readRemaining());
         } finally {
-            from.release();
-            to.release();
+            from.releaseLast();
+            to.releaseLast();
         }
     }
 }

@@ -119,7 +119,11 @@ public class TextLongReference extends AbstractReference implements LongReferenc
 
     @NotNull
     public String toString() {
-        return "value: " + getValue();
+        try {
+            return "value: " + getValue();
+        } catch (Exception e) {
+            return super.toString();
+        }
     }
 
     @Override

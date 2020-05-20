@@ -57,7 +57,7 @@ public class BinaryLongArrayReferenceTest {
     
             for (int i = 0; i < 128; i++)
                 assertEquals(i + 1, array.getValueAt(i));
-            bytes.release();
+            bytes.releaseLast();
         }
     }
 
@@ -74,7 +74,7 @@ public class BinaryLongArrayReferenceTest {
         la2.readMarshallable(bytes);
         assertEquals(4, la2.first.getCapacity());
         assertEquals(8, la2.second.getCapacity());
-        bytes.release();
+        bytes.releaseLast();
     }
 
     static class LongArrays implements BytesMarshallable {

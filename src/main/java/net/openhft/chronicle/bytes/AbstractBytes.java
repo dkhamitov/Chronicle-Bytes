@@ -19,7 +19,9 @@ package net.openhft.chronicle.bytes;
 import net.openhft.chronicle.bytes.algo.BytesStoreHash;
 import net.openhft.chronicle.bytes.util.DecoratedBufferOverflowException;
 import net.openhft.chronicle.bytes.util.DecoratedBufferUnderflowException;
+import net.openhft.chronicle.core.ReferenceCounted;
 import net.openhft.chronicle.core.ReferenceCounter;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.annotation.UsedViaReflection;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.UnsafeText;
@@ -37,7 +39,7 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
     private final String name;
     @NotNull
     protected BytesStore<Bytes<Underlying>, Underlying> bytesStore;
-    private final ReferenceCounter refCount = ReferenceCounter.onReleased(this::performRelease);
+    protected final ReferenceCounted refCount = ReferenceCounter.onReleased(this::performRelease);
     protected long readPosition;
     protected long writePosition;
     protected long writeLimit;
@@ -53,7 +55,7 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
     AbstractBytes(@NotNull BytesStore<Bytes<Underlying>, Underlying> bytesStore, long writePosition, long writeLimit, String name)
             throws IllegalStateException {
         this.bytesStore = bytesStore;
-        bytesStore.reserve();
+        bytesStore.reserve(this);
         readPosition = bytesStore.readPosition();
         this.uncheckedWritePosition(writePosition);
         this.writeLimit = writeLimit;
@@ -61,11 +63,6 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
         this.name = name;
 
         assert !bytesStore.isDirectMemory() || BytesUtil.register(this);
-    }
-
-    @Override
-    public boolean checkRefCount() {
-        return refCount.checkRefCount();
     }
 
     @Override
@@ -335,7 +332,7 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
 
     void performRelease() throws IllegalStateException {
         try {
-            this.bytesStore.release();
+            this.bytesStore.release(this);
         } finally {
             this.bytesStore = NoBytesStore.noBytesStore();
         }
@@ -507,23 +504,28 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
     }
 
     @Override
-    public void reserve() throws IllegalStateException {
-        refCount.reserve();
+    public void reserve(ReferenceOwner id) throws IllegalStateException {
+        refCount.reserve(id);
     }
 
     @Override
-    public void release() throws IllegalStateException {
-        refCount.release();
+    public void release(ReferenceOwner id) throws IllegalStateException {
+        refCount.release(id);
     }
 
     @Override
-    public long refCount() {
-        return refCount.get();
+    public void releaseLast(ReferenceOwner id) {
+        refCount.releaseLast(id);
     }
 
     @Override
-    public boolean tryReserve() {
-        return refCount.tryReserve();
+    public int refCount() {
+        return refCount.refCount();
+    }
+
+    @Override
+    public boolean tryReserve(ReferenceOwner id) {
+        return refCount.tryReserve(id);
     }
 
     @NotNull

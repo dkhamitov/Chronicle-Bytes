@@ -98,7 +98,7 @@ public class NativeBytes<Underlying> extends VanillaBytes<Underlying> {
                 return NativeBytes.wrapWithNativeBytes(store);
 
             } finally {
-                store.release();
+                store.release(INIT);
             }
         } catch (IllegalStateException e) {
             throw new AssertionError(e);
@@ -221,14 +221,19 @@ public class NativeBytes<Underlying> extends VanillaBytes<Underlying> {
             boe.initCause(e);
             throw boe;
         }
+        store.reserveTransfer(INIT, this);
 
         @Nullable BytesStore<Bytes<Underlying>, Underlying> tempStore = this.bytesStore;
         this.bytesStore.copyTo(store);
         this.bytesStore = store;
         try {
-            tempStore.release();
+            tempStore.releaseLast(this);
         } catch (IllegalStateException e) {
-            Jvm.debug().on(getClass(), e);
+            boolean debug = false;
+            assert debug = true;
+            if (debug)
+                throw e;
+            Jvm.warn().on(getClass(), e);
         }
 
         if (this.bytesStore.underlyingObject() instanceof ByteBuffer) {

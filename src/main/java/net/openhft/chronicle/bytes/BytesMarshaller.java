@@ -19,6 +19,7 @@ package net.openhft.chronicle.bytes;
 import net.openhft.chronicle.core.ClassLocal;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.Maths;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.util.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
@@ -243,7 +244,7 @@ public class BytesMarshaller<T> {
             long stopBit = read.readStopBit();
             if (stopBit == -1) {
                 if (bytes != null)
-                    bytes.release();
+                    bytes.release(ReferenceOwner.INIT);
                 field.set(o, null);
                 return;
             }

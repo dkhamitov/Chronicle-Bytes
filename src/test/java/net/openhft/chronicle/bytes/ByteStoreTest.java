@@ -151,7 +151,7 @@ public class ByteStoreTest {
         assertEquals(SIZE, bytes.capacity());
         VanillaBytes<Void> bytes = Bytes.allocateDirect(10);
         assertEquals(10, bytes.capacity());
-        bytes.release();
+        bytes.releaseLast();
     }
 
     @Test
@@ -549,7 +549,8 @@ public class ByteStoreTest {
     @Test
     public void testToString() {
         assumeFalse(GuardedNativeBytes.areNewGuarded());
-        @Nullable Bytes bytes = NativeBytesStore.nativeStore(32).bytesForWrite();
+        NativeBytesStore<Void> nbs = NativeBytesStore.nativeStore(32);
+        @Nullable Bytes bytes = nbs.bytesForWrite();
         try {
             assertEquals("[pos: 0, rlim: 0, wlim: 8EiB, cap: 8EiB ] ǁ‡٠٠٠٠٠٠٠٠", bytes.toDebugString());
             bytes.writeUnsignedByte(1);
@@ -576,7 +577,7 @@ public class ByteStoreTest {
             bytes.writeUnsignedByte(8);
             assertEquals("[pos: 3, rlim: 8, wlim: 8EiB, cap: 8EiB ] ⒈⒉⒊ǁ⒋⒌⒍⒎⒏‡٠٠٠٠٠٠٠٠", bytes.toDebugString());
         } finally {
-            bytes.release();
+            bytes.releaseLast();
             assertEquals(0, bytes.refCount());
         }
     }

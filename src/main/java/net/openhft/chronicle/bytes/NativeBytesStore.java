@@ -70,7 +70,6 @@ public class NativeBytesStore<Underlying>
     private boolean elastic;
     @Nullable
     private Underlying underlyingObject;
-    private final ReferenceCounter refCount = ReferenceCounter.onReleased(this::performRelease);
 
     private NativeBytesStore() {
     }
@@ -160,7 +159,7 @@ public class NativeBytesStore<Underlying>
     public static NativeBytesStore from(@NotNull byte[] bytes) {
         try {
             @NotNull NativeBytesStore nbs = nativeStore(bytes.length);
-            Bytes.wrapForRead(bytes).copyTo(nbs);
+            nbs.write(0, bytes, 0, bytes.length);
             return nbs;
         } catch (IllegalArgumentException e) {
             throw new AssertionError(e);
@@ -294,25 +293,10 @@ public class NativeBytesStore<Underlying>
     }
 
     @Override
-    public void reserve() throws IllegalStateException {
-        refCount.reserve();
-    }
-
-    @Override
-    public void release() throws IllegalStateException {
-        refCount.release();
-        if (Jvm.isDebug() && refCount.get() == 0)
-            releasedHere = new Error("Released here");
-    }
-
-    @Override
-    public long refCount() {
-        return refCount.get();
-    }
-
-    @Override
-    public boolean tryReserve() {
-        return refCount.tryReserve();
+    public void release(ReferenceOwner id) throws IllegalStateException {
+        super.release(id);
+        if (Jvm.isDebug() && referenceCounted.refCount() == 0)
+            releasedHere = new StackTrace("Released here");
     }
 
     @Override
@@ -556,9 +540,9 @@ public class NativeBytesStore<Underlying>
     }
 
     // this is synchronized to ensure that setting memory = null gets flushed
-    private synchronized void performRelease() {
+    protected synchronized void performRelease() {
         memory = null;
-        if (refCount.get() > 0) {
+        if (referenceCounted.refCount() > 0) {
             LOGGER.info("NativeBytesStore discarded without releasing ", createdHere);
         }
         if (releasedHere == null) {

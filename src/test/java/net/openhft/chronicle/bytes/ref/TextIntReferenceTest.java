@@ -27,8 +27,8 @@ import static org.junit.Assert.*;
 public class TextIntReferenceTest {
     @Test
     public void test() {
+        @NotNull NativeBytesStore<Void> nbs = NativeBytesStore.nativeStoreWithFixedCapacity(64);
         try (@NotNull TextIntReference ref = new TextIntReference()) {
-            @NotNull NativeBytesStore<Void> nbs = NativeBytesStore.nativeStoreWithFixedCapacity(64);
             ref.bytesStore(nbs, 16, ref.maxSize());
             assertEquals(0, ref.getValue());
             ref.addAtomicValue(1);
@@ -45,8 +45,8 @@ public class TextIntReferenceTest {
             Bytes<Void> bytes = nbs.bytesForRead();
             bytes.readPosition(16);
             assertEquals("!!atomic {  locked: false, value: 0000000002 }", bytes.parseUtf8(StopCharTesters.CONTROL_STOP));
-            nbs.release();
-            bytes.release();
+            bytes.releaseLast();
         }
+        nbs.releaseLast();
     }
 }

@@ -44,7 +44,7 @@ public class TextLongArrayReferenceTest {
             System.out.println(expected.length());
             assertEquals(expected,
                     bytes.toString());
-            bytes.release();
+            bytes.releaseLast();
         }
     }
 }

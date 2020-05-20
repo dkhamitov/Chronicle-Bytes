@@ -17,6 +17,7 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.core.OS;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -62,8 +63,7 @@ public class MappedMemoryTest {
                     OS.memory().writeLong(address + i, i);
                 }
 
-                bytesStore.release();
-                mappedFile.release();
+                mappedFile.releaseLast();
                 assertEquals(mappedFile.referenceCounts(), 0, mappedFile.refCount());
                 LOG.info("With RawMemory,\t\t time= " + 80 * (System.nanoTime() - startTime) / BLOCK_SIZE / 10.0 + " ns, number of longs written=" + BLOCK_SIZE / 8);
             } finally {
@@ -86,7 +86,7 @@ public class MappedMemoryTest {
                 for (long i = 0; i < BLOCK_SIZE; i += 8) {
                     bytes.writeLong(i);
                 }
-                bytes.release();
+                bytes.releaseLast();
                 assertEquals(0, bytes.refCount());
                 LOG.info("With MappedNativeBytes,\t avg time= " + 80 * (System.nanoTime() - startTime) / BLOCK_SIZE / 10.0 + " ns, number of longs written=" + BLOCK_SIZE / 8);
             } finally {
@@ -109,15 +109,15 @@ public class MappedMemoryTest {
                 for (long i = 0; i < BLOCK_SIZE / 2; i += 8L) {
                     bytes.writeLong(i);
                 }
-                bytes.release();
+                bytes.releaseLast();
 
                 bytes = mappedFile.acquireBytesForWrite(BLOCK_SIZE / 2 + 1);
                 for (long i = 0; i < BLOCK_SIZE / 2; i += 8L) {
                     bytes.writeLong(i);
                 }
-                bytes.release();
+                bytes.releaseLast();
 
-                mappedFile.release();
+                mappedFile.releaseLast();
                 assertEquals(mappedFile.referenceCounts(), 0, mappedFile.refCount());
                 LOG.info("With NativeBytes,\t\t time= " + 80 * (System.nanoTime() - startTime) / BLOCK_SIZE / 10.0 + " ns, number of longs written=" + BLOCK_SIZE / 8);
             } finally {
@@ -134,7 +134,8 @@ public class MappedMemoryTest {
 
             @NotNull Bytes bytes = mappedBytes(tempFile, OS.pageSize());
             assertEquals(1, bytes.refCount());
-            bytes.reserve();
+            ReferenceOwner temp = ReferenceOwner.temporary();
+            bytes.reserve(temp);
             @NotNull char[] chars = new char[OS.pageSize() * 11];
             Arrays.fill(chars, '.');
             chars[chars.length - 1] = '*';
@@ -143,8 +144,10 @@ public class MappedMemoryTest {
             bytes.writeUtf8(text);
             final String textValue = bytes.toString();
             assertEquals(text, textValue.substring(chars.length + 4));
-            bytes.release();
+            bytes.release(temp);
             assertEquals(1, bytes.refCount());
+            bytes.releaseLast();
+            assertEquals(0, bytes.refCount());
         } finally {
             tempFile.delete();
         }

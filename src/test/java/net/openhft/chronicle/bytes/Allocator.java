@@ -65,7 +65,8 @@ public enum Allocator {
         @NotNull
         @Override
         Bytes<ByteBuffer> elasticBytes(int capacity) {
-            return Bytes.elasticHeapByteBuffer(Math.max(32, capacity)).unchecked(true);
+            Bytes<ByteBuffer> bbb = Bytes.elasticHeapByteBuffer(Math.max(32, capacity));
+            return bbb.unchecked(true);
         }
 
         @NotNull

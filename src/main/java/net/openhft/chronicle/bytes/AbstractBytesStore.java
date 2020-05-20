@@ -18,6 +18,9 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.bytes.algo.BytesStoreHash;
+import net.openhft.chronicle.core.ReferenceCounted;
+import net.openhft.chronicle.core.ReferenceCounter;
+import net.openhft.chronicle.core.ReferenceOwner;
 
 import java.nio.BufferUnderflowException;
 
@@ -26,6 +29,35 @@ import java.nio.BufferUnderflowException;
  */
 public abstract class AbstractBytesStore<B extends BytesStore<B, Underlying>, Underlying>
         implements BytesStore<B, Underlying> {
+    protected final ReferenceCounted referenceCounted = ReferenceCounter.onReleased(this::performRelease);
+
+    @Override
+    public void reserve(ReferenceOwner id) throws IllegalStateException {
+        referenceCounted.reserve(id);
+    }
+
+    @Override
+    public void release(ReferenceOwner id) throws IllegalStateException {
+        referenceCounted.release(id);
+    }
+
+    @Override
+    public int refCount() {
+        return referenceCounted.refCount();
+    }
+
+    @Override
+    public boolean tryReserve(ReferenceOwner id) {
+        return referenceCounted.tryReserve(id);
+    }
+
+    @Override
+    public void releaseLast(ReferenceOwner id) {
+        referenceCounted.releaseLast(id);
+    }
+
+    protected abstract void performRelease();
+
     @Override
     public int peekUnsignedByte(long offset) throws BufferUnderflowException {
         return offset >= readLimit() ? -1 : readUnsignedByte(offset);

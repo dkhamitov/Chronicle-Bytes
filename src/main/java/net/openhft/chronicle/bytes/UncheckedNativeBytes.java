@@ -17,10 +17,7 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.bytes.algo.BytesStoreHash;
-import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.Memory;
-import net.openhft.chronicle.core.OS;
-import net.openhft.chronicle.core.ReferenceCounter;
+import net.openhft.chronicle.core.*;
 import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +35,7 @@ public class UncheckedNativeBytes<Underlying> implements Bytes<Underlying> {
     protected final long capacity;
     @NotNull
     private final Bytes<Underlying> underlyingBytes;
-    private final ReferenceCounter refCount = ReferenceCounter.onReleased(this::performRelease);
+    private final ReferenceCounted refCount = ReferenceCounter.onReleased(this::performRelease);
     @NotNull
     protected NativeBytesStore<Underlying> bytesStore;
     protected long readPosition;
@@ -49,6 +46,7 @@ public class UncheckedNativeBytes<Underlying> implements Bytes<Underlying> {
     public UncheckedNativeBytes(@NotNull Bytes<Underlying> underlyingBytes)
             throws IllegalStateException {
         this.underlyingBytes = underlyingBytes;
+        this.underlyingBytes.reserve(this);
         this.bytesStore = (NativeBytesStore<Underlying>) underlyingBytes.bytesStore();
         assert bytesStore.start() == 0;
         writePosition = underlyingBytes.writePosition();
@@ -63,11 +61,6 @@ public class UncheckedNativeBytes<Underlying> implements Bytes<Underlying> {
             underlyingBytes.ensureCapacity(size);
             bytesStore = (NativeBytesStore<Underlying>) underlyingBytes.bytesStore();
         }
-    }
-
-    @Override
-    public boolean checkRefCount() {
-        return refCount.checkRefCount();
     }
 
     @Override
@@ -324,7 +317,7 @@ public class UncheckedNativeBytes<Underlying> implements Bytes<Underlying> {
     }
 
     void performRelease() {
-        this.underlyingBytes.release();
+        this.underlyingBytes.release(this);
     }
 
     @Override
@@ -406,23 +399,28 @@ public class UncheckedNativeBytes<Underlying> implements Bytes<Underlying> {
     }
 
     @Override
-    public void reserve() throws IllegalStateException {
-        refCount.reserve();
+    public void reserve(ReferenceOwner id) throws IllegalStateException {
+        refCount.reserve(id);
     }
 
     @Override
-    public void release() throws IllegalStateException {
-        refCount.release();
+    public void releaseLast(ReferenceOwner id) {
+        refCount.releaseLast(id);
     }
 
     @Override
-    public long refCount() {
-        return refCount.get();
+    public void release(ReferenceOwner id) throws IllegalStateException {
+        refCount.release(id);
     }
 
     @Override
-    public boolean tryReserve() {
-        return refCount.tryReserve();
+    public boolean tryReserve(ReferenceOwner id) {
+        return refCount.tryReserve(id);
+    }
+
+    @Override
+    public int refCount() {
+        return refCount.refCount();
     }
 
     @NotNull

@@ -41,7 +41,7 @@ public class ByteStringParserTest {
 
     @After
     public void checkRegisteredBytes() {
-        bytes.release();
+        bytes.releaseLast();
         BytesUtil.checkRegisteredBytes();
     }
 
@@ -68,7 +68,7 @@ public class ByteStringParserTest {
         bytes2.append(expected);
         Assert.assertEquals(expected, bytes2.parseLong(0));
         Assert.assertEquals(expected, BytesInternal.parseLong(bytes2));
-        bytes2.release();
+        bytes2.releaseLast();
 
     }
 

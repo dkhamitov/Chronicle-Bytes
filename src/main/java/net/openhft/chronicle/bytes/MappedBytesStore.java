@@ -31,6 +31,7 @@ public class MappedBytesStore extends NativeBytesStore<Void> {
         super(address, start + capacity, new OS.Unmapper(address, capacity, owner), false);
         this.start = start;
         this.safeLimit = start + safeCapacity;
+        reserveTransfer(INIT, owner);
     }
 
     @NotNull

@@ -91,7 +91,7 @@ public class AllocationRatesTest {
             for (int j = 0; j < BATCH; j++)
                 ds[j] = NativeBytesStore.lazyNativeBytesStoreWithFixedCapacity(BUFFER_SIZE);
             for (int j = 0; j < BATCH; j++) {
-                ds[j].release();
+                ds[j].releaseLast();
                 assertEquals(0, ds[j].refCount());
             }
         }

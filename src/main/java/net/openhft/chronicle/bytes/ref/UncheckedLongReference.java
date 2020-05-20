@@ -17,12 +17,13 @@ package net.openhft.chronicle.bytes.ref;
 
 import net.openhft.chronicle.bytes.BytesStore;
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.UnsafeMemory;
 import org.jetbrains.annotations.NotNull;
 import sun.misc.Unsafe;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class UncheckedLongReference implements LongReference {
+public class UncheckedLongReference implements LongReference, ReferenceOwner {
     private long address;
     private Unsafe unsafe;
 
@@ -37,7 +38,6 @@ public class UncheckedLongReference implements LongReference {
     public void bytesStore(@NotNull BytesStore bytes, long offset, long length) {
         if (length != maxSize()) throw new IllegalArgumentException();
         address = bytes.addressForRead(offset);
-        bytes.reserve();
         unsafe = UnsafeMemory.UNSAFE;
     }
 

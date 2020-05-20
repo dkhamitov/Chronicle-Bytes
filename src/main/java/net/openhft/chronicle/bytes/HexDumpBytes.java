@@ -1,5 +1,6 @@
 package net.openhft.chronicle.bytes;
 
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.util.Histogram;
 import net.openhft.chronicle.core.util.ThrowingConsumer;
@@ -256,26 +257,32 @@ public class HexDumpBytes implements Bytes<Void> {
     }
 
     @Override
-    public void reserve() throws IllegalStateException {
-        base.reserve();
-        text.reserve();
+    public void reserve(ReferenceOwner id) throws IllegalStateException {
+        base.reserve(id);
+        text.reserve(id);
     }
 
     @Override
-    public void release() throws IllegalStateException {
-        base.release();
-        text.release();
+    public void release(ReferenceOwner id) throws IllegalStateException {
+        base.release(id);
+        text.release(id);
     }
 
     @Override
-    public long refCount() {
+    public int refCount() {
         return base.refCount();
     }
 
     @Override
-    public boolean tryReserve() {
-        text.tryReserve();
-        return base.tryReserve();
+    public boolean tryReserve(ReferenceOwner id) {
+        text.tryReserve(id);
+        return base.tryReserve(id);
+    }
+
+    @Override
+    public void releaseLast(ReferenceOwner id) {
+        text.releaseLast(id);
+        base.releaseLast(id);
     }
 
     @Override

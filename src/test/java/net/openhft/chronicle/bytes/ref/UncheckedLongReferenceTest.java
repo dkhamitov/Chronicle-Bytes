@@ -56,6 +56,6 @@ public class UncheckedLongReferenceTest {
         ref.setOrderedValue(20);
         Thread.yield();
         assertEquals(20L, nbs.readLong(16));
-        nbs.release();
+        nbs.releaseLast();
     }
 }

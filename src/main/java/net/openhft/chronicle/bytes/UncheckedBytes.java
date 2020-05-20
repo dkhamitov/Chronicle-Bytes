@@ -43,9 +43,9 @@ public class UncheckedBytes<Underlying> extends AbstractBytes<Underlying> {
     public void setBytes(@NotNull Bytes bytes) throws IllegalStateException {
         BytesStore underlyingBytes = bytes.bytesStore();
         if (bytesStore != underlyingBytes) {
-            bytesStore.release();
+            this.bytesStore.release(this);
             this.bytesStore = underlyingBytes;
-            bytesStore.reserve();
+            this.bytesStore.reserve(this);
         }
         readPosition(bytes.readPosition());
         this.uncheckedWritePosition(bytes.writePosition());

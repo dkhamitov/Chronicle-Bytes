@@ -54,7 +54,7 @@ public class StreamingInputStreamTest {
 
         @NotNull InputStream is = b.inputStream();
         assertThat(is.read(new byte[5], 0, 0), is(0));
-        b.release();
+        b.releaseLast();
     }
 
     @Test(timeout = 1000)
@@ -72,7 +72,7 @@ public class StreamingInputStreamTest {
             assertArrayEquals(test, os.toByteArray());
         }
 
-        b.release();
+        b.releaseLast();
     }
 
     private byte[] prepareBytes(final Bytes b) {

@@ -22,7 +22,7 @@ public class PrimitiveTest {
         Outer outer2 = new Outer();
         outer2.readMarshallable(bytes);
 
-        bytes.release();
+        bytes.releaseLast();
     }
 
     @Test
@@ -43,7 +43,7 @@ public class PrimitiveTest {
 
         PrimitiveDTO dto2 = new PrimitiveDTO();
         dto2.readMarshallable(bytes);
-        bytes.release();
+        bytes.releaseLast();
     }
 
     static class Outer implements BytesMarshallable {
@@ -121,7 +121,7 @@ public class PrimitiveTest {
         assertEquals(8, s64);
         assertEquals(9, f32, 0.0);
         assertEquals(10, f64, 0.0);
-        bytes.release();
+        bytes.releaseLast();
     }
 
     static class PrimitiveDTO implements BytesMarshallable {

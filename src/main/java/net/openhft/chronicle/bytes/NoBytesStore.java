@@ -17,6 +17,7 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.core.OS;
+import net.openhft.chronicle.core.ReferenceOwner;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.BufferOverflowException;
@@ -48,21 +49,25 @@ public enum NoBytesStore implements BytesStore {
     }
 
     @Override
-    public void reserve() throws IllegalStateException {
+    public void reserve(ReferenceOwner id) {
     }
 
     @Override
-    public void release() throws IllegalStateException {
-    }
-
-    @Override
-    public long refCount() {
-        return 0L;
-    }
-
-    @Override
-    public boolean tryReserve() {
+    public boolean tryReserve(ReferenceOwner id) {
         return false;
+    }
+
+    @Override
+    public void release(ReferenceOwner id) {
+    }
+
+    @Override
+    public void releaseLast(ReferenceOwner id) {
+    }
+
+    @Override
+    public int refCount() {
+        return 0;
     }
 
     @NotNull

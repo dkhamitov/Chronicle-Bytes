@@ -21,6 +21,7 @@ import net.openhft.chronicle.bytes.util.StringInternerBytes;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.Maths;
 import net.openhft.chronicle.core.Memory;
+import net.openhft.chronicle.core.ReferenceOwner;
 import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.UnsafeText;
@@ -976,7 +977,8 @@ enum BytesInternal {
         if (bytes.refCount() < 1)
             // added because something is crashing the JVM
             return "<unknown>";
-        bytes.reserve();
+        ReferenceOwner tmp = ReferenceOwner.temporary();
+        bytes.reserve(tmp);
         try {
             int len = Maths.toUInt31(maxLength + 40);
             @NotNull StringBuilder sb = new StringBuilder(len);
@@ -1010,7 +1012,7 @@ enum BytesInternal {
             return sb.toString();
 
         } finally {
-            bytes.release();
+            bytes.release(tmp);
         }
     }
 
@@ -1052,7 +1054,7 @@ enum BytesInternal {
                 toString(bytes1, sb);
                 return sb.toString() + "...";
             } finally {
-                bytes1.release();
+                bytes1.releaseLast();
             }
         } else {
             toString(bytes, sb);
@@ -1100,7 +1102,8 @@ enum BytesInternal {
 
     private static void toString(@NotNull RandomDataInput bytes, @NotNull StringBuilder sb)
             throws IllegalStateException {
-        bytes.reserve();
+        ReferenceOwner temp = ReferenceOwner.temporary();
+        bytes.reserve(temp);
         assert bytes.start() <= bytes.readPosition();
         assert bytes.readPosition() <= bytes.readLimit();
         assert bytes.readLimit() <= bytes.realCapacity();
@@ -1113,7 +1116,7 @@ enum BytesInternal {
             sb.append(' ').append(e);
         }
 
-        bytes.release();
+        bytes.release(temp);
     }
 
     @ForceInline
@@ -2600,7 +2603,7 @@ enum BytesInternal {
         } catch (BufferUnderflowException | BufferOverflowException e) {
             throw new AssertionError(e);
         } finally {
-            in.release();
+            in.releaseLast();
         }
     }
 
