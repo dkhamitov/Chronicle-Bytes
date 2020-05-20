@@ -134,7 +134,7 @@ public class MappedMemoryTest {
 
             @NotNull Bytes bytes = mappedBytes(tempFile, OS.pageSize());
             assertEquals(1, bytes.refCount());
-            ReferenceOwner temp = ReferenceOwner.temporary();
+            ReferenceOwner temp = ReferenceOwner.temporary("test");
             bytes.reserve(temp);
             @NotNull char[] chars = new char[OS.pageSize() * 11];
             Arrays.fill(chars, '.');

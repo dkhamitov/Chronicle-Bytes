@@ -977,7 +977,7 @@ enum BytesInternal {
         if (bytes.refCount() < 1)
             // added because something is crashing the JVM
             return "<unknown>";
-        ReferenceOwner tmp = ReferenceOwner.temporary();
+        ReferenceOwner tmp = ReferenceOwner.temporary("BytesInternal.toDebugString");
         bytes.reserve(tmp);
         try {
             int len = Maths.toUInt31(maxLength + 40);
@@ -1102,7 +1102,7 @@ enum BytesInternal {
 
     private static void toString(@NotNull RandomDataInput bytes, @NotNull StringBuilder sb)
             throws IllegalStateException {
-        ReferenceOwner temp = ReferenceOwner.temporary();
+        ReferenceOwner temp = ReferenceOwner.temporary("BytesInternal.toString");
         bytes.reserve(temp);
         assert bytes.start() <= bytes.readPosition();
         assert bytes.readPosition() <= bytes.readLimit();

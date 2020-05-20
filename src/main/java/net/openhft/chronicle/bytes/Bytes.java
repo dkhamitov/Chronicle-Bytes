@@ -465,7 +465,7 @@ public interface Bytes<Underlying> extends
             // added because something is crashing the JVM
             return "<unknown>";
 
-        ReferenceOwner usage = ReferenceOwner.temporary();
+        ReferenceOwner usage = ReferenceOwner.temporary("Bytes.toString");
         buffer.reserve(usage);
         try {
 

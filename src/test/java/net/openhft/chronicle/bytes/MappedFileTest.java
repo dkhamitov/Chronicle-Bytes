@@ -64,7 +64,7 @@ public class MappedFileTest {
         final long chunkSize = OS.mapAlign(64);
         final MappedFile mappedFile = MappedFile.mappedFile(file, 64);
         final MappedBytesStore first = mappedFile.acquireByteStore(1);
-        ReferenceOwner temp = ReferenceOwner.temporary();
+        ReferenceOwner temp = ReferenceOwner.temporary("test");
         first.reserve(temp);
 
         assertEquals(2, first.refCount());
@@ -100,7 +100,7 @@ public class MappedFileTest {
         @NotNull MappedFile mf = MappedFile.mappedFile(tmp, chunkSize, 0);
         assertEquals("refCount: 1", mf.referenceCounts());
 
-        ReferenceOwner temp = ReferenceOwner.temporary();
+        ReferenceOwner temp = ReferenceOwner.temporary("test");
 
         @Nullable MappedBytesStore bs = mf.acquireByteStore(chunkSize + (1 << 10));
         bs.reserve(temp);
@@ -135,7 +135,7 @@ public class MappedFileTest {
         assertEquals(3, bs.refCount());
         assertEquals("refCount: 1, 0, 3", mf.referenceCounts());
 
-        ReferenceOwner temp2 = ReferenceOwner.temporary();
+        ReferenceOwner temp2 = ReferenceOwner.temporary("test");
         @Nullable BytesStore bs2 = mf.acquireByteStore(chunkSize + (1 << 10));
         bs2.reserve(temp2);
 
