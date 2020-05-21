@@ -58,7 +58,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     private final MappedFile mappedFile;
     private final boolean backingFileIsReadOnly;
     @Nullable
-    private final StackTraceElement[] createdHere;
+    private final StackTrace createdHere;
 
     private volatile Thread lastAccessedThread;
     private volatile RuntimeException writeStack;
@@ -80,11 +80,19 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
         assert !mappedFile.isClosed();
         clear();
         if (TRACE) {
-            createdHere = Thread.currentThread().getStackTrace();
+            createdHere = new StackTrace();
             MAPPED_BYTES.add(new WeakReference<>(this));
         } else {
             createdHere = null;
         }
+    }
+
+    @NotNull
+    public static MappedBytes mappedBytes(ReferenceOwner owner,
+                                          @NotNull final File file,
+                                          final long chunkSize)
+            throws FileNotFoundException, IllegalStateException {
+        return mappedBytes(owner, file, chunkSize, OS.pageSize());
     }
 
     /**
@@ -98,20 +106,29 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     }
 
     @NotNull
-    public static MappedBytes mappedBytes(@NotNull final File file, final long chunkSize)
+    public static MappedBytes mappedBytes(
+            @NotNull final File file,
+            final long chunkSize)
             throws FileNotFoundException, IllegalStateException {
-        return mappedBytes(file, chunkSize, OS.pageSize());
+        return mappedBytes(INIT, file, chunkSize, OS.pageSize());
     }
 
     @NotNull
-    public static MappedBytes mappedBytes(@NotNull final File file, final long chunkSize, final long overlapSize)
+    public static MappedBytes mappedBytes(@NotNull final File file,
+                                          final long chunkSize,
+                                          final long overlapSize) throws FileNotFoundException {
+        return mappedBytes(INIT, file, chunkSize, overlapSize);
+
+    }
+
+    @NotNull
+    public static MappedBytes mappedBytes(ReferenceOwner owner,
+                                          @NotNull final File file,
+                                          final long chunkSize,
+                                          final long overlapSize)
             throws FileNotFoundException, IllegalStateException {
         @NotNull final MappedFile rw = MappedFile.of(file, chunkSize, overlapSize, false);
-        try {
-            return mappedBytes(rw);
-        } finally {
-            rw.release(ReferenceOwner.INIT);
-        }
+        return mappedBytes(owner, rw);
     }
 
     @NotNull
@@ -120,17 +137,39 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
                                           final long overlapSize,
                                           final boolean readOnly) throws FileNotFoundException,
             IllegalStateException {
+        return mappedBytes(INIT, file, chunkSize, overlapSize, readOnly);
+    }
+
+    @NotNull
+    public static MappedBytes mappedBytes(ReferenceOwner owner,
+                                          @NotNull final File file,
+                                          final long chunkSize,
+                                          final long overlapSize,
+                                          final boolean readOnly) throws FileNotFoundException,
+            IllegalStateException {
         @NotNull final MappedFile rw = MappedFile.of(file, chunkSize, overlapSize, readOnly);
-        try {
-            return mappedBytes(rw);
-        } finally {
-            rw.release(ReferenceOwner.INIT);
-        }
+        return mappedBytes(owner, rw);
+    }
+
+    @NotNull
+    public static MappedBytes mappedBytes(ReferenceOwner owner, @NotNull final MappedFile rw) {
+        MappedBytes bytes = new MappedBytes(rw);
+        if (owner != INIT)
+            bytes.reserveTransfer(INIT, owner);
+        return bytes;
     }
 
     @NotNull
     public static MappedBytes mappedBytes(@NotNull final MappedFile rw) {
         return new MappedBytes(rw);
+    }
+
+    @Override
+    void performRelease() throws IllegalStateException {
+        if ((BytesStore) bytesStore instanceof MappedBytesStore)
+            mappedFile.release(bytesStore);
+        super.performRelease();
+        mappedFile.release(this);
     }
 
     @NotNull
@@ -156,7 +195,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
                 "mappedFileRafIsClosed=" + Jvm.getValue(mappedFile.raf(), "closed") + ",\n" +
                 "mappedFileRafChannelIsClosed=" + !mappedFile.raf().getChannel().isOpen() + ",\n" +
                 "isClosed=" + isClosed() + ",\n" +
-                "createdHere=" + Arrays.stream(createdHere).map(Objects::toString).collect(Collectors.joining("\n")) +
+                "createdHere=" + Arrays.stream(createdHere.getStackTrace()).map(Objects::toString).collect(Collectors.joining("\n")) +
                 '}';
     }
 
@@ -496,12 +535,6 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     }
 
     @Override
-    protected void performRelease() throws IllegalStateException {
-        super.performRelease();
-        mappedFile.release(this);
-    }
-
-    @Override
     public boolean isElastic() {
         return true;
     }
@@ -789,8 +822,8 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     public void close() {
         try {
             this.release(INIT);
-        } catch (IllegalStateException e) {
-            // ignored.
+        } catch (IllegalStateException ignored) {
+            // TODO can this be fixed
         }
     }
 
@@ -985,13 +1018,5 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
         }
 //        super.writeCheckOffset(offset, adding);
         return bytesStore.compareAndSwapLong(offset, expected, value);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        if (refCount() > 0)
-            Jvm.warn().on(getClass(), "Discarded without being released");
-        close();
-        super.finalize();
     }
 }

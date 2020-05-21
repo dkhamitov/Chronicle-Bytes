@@ -39,8 +39,7 @@ public class MemoryReadJitterMain {
         final Histogram histoReadWrite = new Histogram();
 
         Thread reader = new Thread(() -> {
-            try {
-                MappedBytes mf = MappedBytes.mappedBytes(file, 64 << 10);
+            try (MappedBytes mf = MappedBytes.mappedBytes(file, 64 << 10)) {
                 mf.readLimit(mf.writeLimit());
                 MemoryMessager mm = new MemoryMessager(mf, padTo);
                 boolean found = false;
@@ -76,7 +75,6 @@ public class MemoryReadJitterMain {
                         Jvm.safepoint();
                     found = true;
                 }
-                mf.releaseLast();
             } catch (Throwable t) {
                 t.printStackTrace();
             }

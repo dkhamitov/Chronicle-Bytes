@@ -173,8 +173,8 @@ public class MappedBytesTest {
     @Test
     public void testWriteBytesWithOffsetAndTextShift() throws IOException {
         File tempFile1 = File.createTempFile("mapped", "bytes");
-        try (MappedBytes bytesW = MappedBytes.mappedBytes(tempFile1, 4, 4);
-             MappedBytes bytesR = MappedBytes.mappedBytes(tempFile1, 200 << 10, 200 << 10)) {
+        try (MappedBytes bytesW = MappedBytes.mappedBytes(tempFile1, (long) 4, (long) 4);
+             MappedBytes bytesR = MappedBytes.mappedBytes(tempFile1, (long) (200 << 10), (long) (200 << 10))) {
             int offset = 10;
             int shift = 128;
 
@@ -195,8 +195,8 @@ public class MappedBytesTest {
     @Test
     public void testWriteReadBytesWithOffsetAndTextShift() throws IOException {
         File tempFile1 = File.createTempFile("mapped", "bytes");
-        try (MappedBytes bytesW = MappedBytes.mappedBytes(tempFile1, 64 << 10, 16 << 10);
-             MappedBytes bytesR = MappedBytes.mappedBytes(tempFile1, 64 << 10, 16 << 10)) {
+        try (MappedBytes bytesW = MappedBytes.mappedBytes(tempFile1, (long) (64 << 10), (long) (16 << 10));
+             MappedBytes bytesR = MappedBytes.mappedBytes(tempFile1, (long) (64 << 10), (long) (16 << 10))) {
             int offset = 10;
             int shift = 128;
 
@@ -216,131 +216,132 @@ public class MappedBytesTest {
 
     @Test
     public void testLargeWrites() throws IOException {
-        MappedBytes bytes = MappedBytes.mappedBytes(File.createTempFile("mapped", "bytes"), 128 <<
-                10, 64 << 10);
+        File tempFile = File.createTempFile("mapped", "bytes");
+        try (MappedBytes bytes = MappedBytes.mappedBytes(
+                tempFile, 128 << 10, 64 << 10)) {
 
-        byte[] largeBytes = new byte[500 << 10];
-        bytes.writePosition(0);
-        bytes.write(largeBytes);
-        bytes.writePosition(0);
-        bytes.write(64, largeBytes);
-        bytes.writePosition(0);
-        bytes.write(largeBytes, 64, largeBytes.length - 64);
-        bytes.writePosition(0);
-        bytes.write(64, largeBytes, 64, largeBytes.length - 64);
+            byte[] largeBytes = new byte[500 << 10];
+            bytes.writePosition(0);
+            bytes.write(largeBytes);
+            bytes.writePosition(0);
+            bytes.write(64, largeBytes);
+            bytes.writePosition(0);
+            bytes.write(largeBytes, 64, largeBytes.length - 64);
+            bytes.writePosition(0);
+            bytes.write(64, largeBytes, 64, largeBytes.length - 64);
 
-        bytes.writePosition(0);
-        bytes.write(Bytes.wrapForRead(largeBytes));
-        bytes.writePosition(0);
-        Bytes<byte[]> bytes1 = Bytes.wrapForRead(largeBytes);
-        bytes.write(64, bytes1);
-        bytes.writePosition(0);
-        bytes.write(Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
-        bytes.writePosition(0);
-        bytes.write(64, Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(Bytes.wrapForRead(largeBytes));
+            bytes.writePosition(0);
+            Bytes<byte[]> bytes1 = Bytes.wrapForRead(largeBytes);
+            bytes.write(64, bytes1);
+            bytes.writePosition(0);
+            bytes.write(Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(64, Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
 
-        Bytes bytes2 = Bytes.allocateDirect(largeBytes);
-        bytes.writePosition(0);
-        bytes.write(bytes2);
-        bytes.writePosition(0);
-        bytes.write(64, bytes2);
-        bytes.writePosition(0);
-        bytes.write(bytes2, 64L, largeBytes.length - 64L);
-        bytes.writePosition(0);
-        bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
+            Bytes bytes2 = Bytes.allocateDirect(largeBytes);
+            bytes.writePosition(0);
+            bytes.write(bytes2);
+            bytes.writePosition(0);
+            bytes.write(64, bytes2);
+            bytes.writePosition(0);
+            bytes.write(bytes2, 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
 
-        bytes2.releaseLast();
-        bytes.releaseLast();
-
+            bytes2.releaseLast();
+        }
     }
 
     @Test
     public void testLargeWrites3() throws IOException {
-        MappedBytes bytes = MappedBytes.mappedBytes(File.createTempFile("mapped", "bytes"), 47 <<
-                10, 21 << 10);
+        File tempFile1 = File.createTempFile("mapped", "bytes");
+        try (MappedBytes bytes = MappedBytes.mappedBytes(tempFile1,
+                47 << 10, 21 << 10)) {
 
-        byte[] largeBytes = new byte[513 << 10];
-        bytes.writePosition(0);
-        bytes.write(largeBytes);
-        bytes.writePosition(0);
-        bytes.write(64, largeBytes);
-        bytes.writePosition(0);
-        bytes.write(largeBytes, 64, largeBytes.length - 64);
-        bytes.writePosition(0);
-        bytes.write(64, largeBytes, 64, largeBytes.length - 64);
+            byte[] largeBytes = new byte[513 << 10];
+            bytes.writePosition(0);
+            bytes.write(largeBytes);
+            bytes.writePosition(0);
+            bytes.write(64, largeBytes);
+            bytes.writePosition(0);
+            bytes.write(largeBytes, 64, largeBytes.length - 64);
+            bytes.writePosition(0);
+            bytes.write(64, largeBytes, 64, largeBytes.length - 64);
 
-        bytes.writePosition(0);
-        bytes.write(Bytes.wrapForRead(largeBytes));
-        bytes.writePosition(0);
-        Bytes<byte[]> bytes1 = Bytes.wrapForRead(largeBytes);
-        bytes.write(64, bytes1);
-        bytes.writePosition(0);
-        bytes.write(Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
-        bytes.writePosition(0);
-        bytes.write(64, Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(Bytes.wrapForRead(largeBytes));
+            bytes.writePosition(0);
+            Bytes<byte[]> bytes1 = Bytes.wrapForRead(largeBytes);
+            bytes.write(64, bytes1);
+            bytes.writePosition(0);
+            bytes.write(Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(64, Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
 
-        Bytes bytes2 = Bytes.allocateDirect(largeBytes);
-        bytes.writePosition(0);
-        bytes.write(bytes2);
-        bytes.writePosition(0);
-        bytes.write(64, bytes2);
-        bytes.writePosition(0);
-        bytes.write(bytes2, 64L, largeBytes.length - 64L);
-        bytes.writePosition(0);
-        bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
+            Bytes bytes2 = Bytes.allocateDirect(largeBytes);
+            bytes.writePosition(0);
+            bytes.write(bytes2);
+            bytes.writePosition(0);
+            bytes.write(64, bytes2);
+            bytes.writePosition(0);
+            bytes.write(bytes2, 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
 
-        bytes2.releaseLast();
-        bytes.releaseLast();
-
+            bytes2.releaseLast();
+        }
     }
 
     @Test
     public void testLargeWrites2() throws IOException {
-        MappedBytes bytes = MappedBytes.mappedBytes(File.createTempFile("mapped", "bytes"), 128 <<
-                10, 128 << 10);
+        File tempFile = File.createTempFile("mapped", "bytes");
+        try (MappedBytes bytes = MappedBytes.mappedBytes(
+                tempFile, 128 << 10, 128 << 10)) {
 
-        byte[] largeBytes = new byte[500 << 10];
-        bytes.writePosition(0);
-        bytes.write(largeBytes);
-        bytes.writePosition(0);
-        bytes.write(64, largeBytes);
-        bytes.writePosition(0);
-        bytes.write(largeBytes, 64, largeBytes.length - 64);
-        bytes.writePosition(0);
-        bytes.write(64, largeBytes, 64, largeBytes.length - 64);
+            byte[] largeBytes = new byte[500 << 10];
+            bytes.writePosition(0);
+            bytes.write(largeBytes);
+            bytes.writePosition(0);
+            bytes.write(64, largeBytes);
+            bytes.writePosition(0);
+            bytes.write(largeBytes, 64, largeBytes.length - 64);
+            bytes.writePosition(0);
+            bytes.write(64, largeBytes, 64, largeBytes.length - 64);
 
-        bytes.writePosition(0);
-        bytes.write(Bytes.wrapForRead(largeBytes));
-        bytes.writePosition(0);
-        Bytes<byte[]> bytes1 = Bytes.wrapForRead(largeBytes);
-        bytes.write(64, bytes1);
-        bytes.writePosition(0);
-        bytes.write(Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
-        bytes.writePosition(0);
-        bytes.write(64, Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(Bytes.wrapForRead(largeBytes));
+            bytes.writePosition(0);
+            Bytes<byte[]> bytes1 = Bytes.wrapForRead(largeBytes);
+            bytes.write(64, bytes1);
+            bytes.writePosition(0);
+            bytes.write(Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(64, Bytes.wrapForRead(largeBytes), 64L, largeBytes.length - 64L);
 
-        Bytes bytes2 = Bytes.allocateDirect(largeBytes);
-        bytes.writePosition(0);
-        bytes.write(bytes2);
-        bytes.writePosition(0);
-        bytes.write(64, bytes2);
-        bytes.writePosition(0);
-        bytes.write(bytes2, 64L, largeBytes.length - 64L);
-        bytes.writePosition(0);
-        bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
+            Bytes bytes2 = Bytes.allocateDirect(largeBytes);
+            bytes.writePosition(0);
+            bytes.write(bytes2);
+            bytes.writePosition(0);
+            bytes.write(64, bytes2);
+            bytes.writePosition(0);
+            bytes.write(bytes2, 64L, largeBytes.length - 64L);
+            bytes.writePosition(0);
+            bytes.write(64, bytes2, 64L, largeBytes.length - 64L);
 
-        bytes2.releaseLast();
-        bytes.releaseLast();
-
+            bytes2.releaseLast();
+        }
     }
 
     @Test
     public void shouldNotBeReadOnly() throws Exception {
-        MappedBytes bytes = MappedBytes.mappedBytes(File.createTempFile("mapped", "bytes"), 64 << 10);
-        assertFalse(bytes.isBackingFileReadOnly());
-        bytes.writeUtf8(null); // used to blow up.
-        assertNull(bytes.readUtf8());
-        bytes.releaseLast();
+        File tempFile = File.createTempFile("mapped", "bytes");
+        try (MappedBytes bytes = MappedBytes.mappedBytes(tempFile, 64 << 10)) {
+            assertFalse(bytes.isBackingFileReadOnly());
+            bytes.writeUtf8(null); // used to blow up.
+            assertNull(bytes.readUtf8());
+        }
     }
 
     @Test
@@ -349,11 +350,11 @@ public class MappedBytesTest {
         try (final RandomAccessFile raf = new RandomAccessFile(tempFile, "rw")) {
             raf.setLength(4096);
             assertTrue(tempFile.setWritable(false));
-            final MappedBytes mappedBytes = MappedBytes.readOnly(tempFile);
+            try (MappedBytes mappedBytes = MappedBytes.readOnly(tempFile)) {
 
-            assertTrue(mappedBytes.
-                    isBackingFileReadOnly());
-            mappedBytes.releaseLast();
+                assertTrue(mappedBytes.
+                        isBackingFileReadOnly());
+            }
         }
     }
 
@@ -362,12 +363,9 @@ public class MappedBytesTest {
         Thread.currentThread().interrupt();
         File file = new File(OS.TARGET + "/interrupted-" + System.nanoTime());
         file.deleteOnExit();
-        MappedBytes mb = MappedBytes.mappedBytes(file, 64 << 10);
-        try {
+        try (MappedBytes mb = MappedBytes.mappedBytes(file, 64 << 10)) {
             mb.realCapacity();
             assertTrue(Thread.currentThread().isInterrupted());
-        } finally {
-            mb.releaseLast();
         }
     }
 
@@ -380,26 +378,27 @@ public class MappedBytesTest {
     public void multiBytes() throws FileNotFoundException {
         String tmpfile = OS.TMP + "/data.dat";
         MappedFile mappedFile = MappedFile.mappedFile(new File(tmpfile), 64 << 10);
-        MappedBytes original = MappedBytes.mappedBytes(mappedFile);
-        original.zeroOut(0, 1000);
+        try (MappedBytes original = MappedBytes.mappedBytes(mappedFile)) {
+            original.zeroOut(0, 1000);
 
-        original.writeInt(0, 1234);
+            original.writeInt(0, 1234);
 
-        PointerBytesStore pbs = new PointerBytesStore();
-        pbs.set(original.addressForRead(50), 100);
+            PointerBytesStore pbs = new PointerBytesStore();
+            pbs.set(original.addressForRead(50), 100);
 
-        // Print out the int in the two BytesStores.
-        // This shows that the copy has the same contents of the original.
-        System.out.println("Original(0): " + original.readInt(0));
-        System.out.println("PBS(0): " + pbs.readInt(0));
+            // Print out the int in the two BytesStores.
+            // This shows that the copy has the same contents of the original.
+            System.out.println("Original(0): " + original.readInt(0));
+            System.out.println("PBS(0): " + pbs.readInt(0));
 
-        // Now modify the copy and print out the new int in the two BytesStores again.
-        pbs.writeInt(0, 4321);
-        System.out.println("Original(50): " + original.readInt(50));
-        System.out.println("PBS(0): " + pbs.readInt(0));
-        original.writeInt(54, 12345678);
-        System.out.println("Original(54): " + original.readInt(54));
-        System.out.println("PBS(4): " + pbs.readInt(4));
+            // Now modify the copy and print out the new int in the two BytesStores again.
+            pbs.writeInt(0, 4321);
+            System.out.println("Original(50): " + original.readInt(50));
+            System.out.println("PBS(0): " + pbs.readInt(0));
+            original.writeInt(54, 12345678);
+            System.out.println("Original(54): " + original.readInt(54));
+            System.out.println("PBS(4): " + pbs.readInt(4));
+        }
     }
 
     @Test

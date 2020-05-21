@@ -17,21 +17,28 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.core.OS;
-import net.openhft.chronicle.core.ReferenceCounted;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * BytesStore to wrap memory mapped data.
  */
 public class MappedBytesStore extends NativeBytesStore<Void> {
+    private final MappedFile mappedFile;
     private final long start;
     private final long safeLimit;
 
-    protected MappedBytesStore(ReferenceCounted owner, long start, long address, long capacity, long safeCapacity) throws IllegalStateException {
-        super(address, start + capacity, new OS.Unmapper(address, capacity, owner), false);
+    protected MappedBytesStore(MappedFile mappedFile, long start, long address, long capacity, long safeCapacity) throws IllegalStateException {
+        super(address, start + capacity, new OS.Unmapper(address, capacity, mappedFile), false);
+        this.mappedFile = mappedFile;
         this.start = start;
         this.safeLimit = start + safeCapacity;
-        reserveTransfer(INIT, owner);
+        mappedFile.reserve(this);
+    }
+
+    @Override
+    protected synchronized void performRelease() {
+        super.performRelease();
+        mappedFile.release(this);
     }
 
     @NotNull
@@ -84,5 +91,10 @@ public class MappedBytesStore extends NativeBytesStore<Void> {
     @Override
     public long readPosition() {
         return start();
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return getClass().getSimpleName() + "{ address: " + Long.toHexString(address) + ", capacity: " + Long.toHexString(capacity()) + " }";
     }
 }

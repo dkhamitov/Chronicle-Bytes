@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 
 public class MappedFileTest {
     @Rule
@@ -68,14 +69,14 @@ public class MappedFileTest {
         first.reserve(temp);
 
         assertEquals(2, first.refCount());
-        assertEquals(1, mappedFile.refCount());
+        assertEquals(2, mappedFile.refCount());
 
         final MappedBytesStore second = mappedFile.acquireByteStore(1 + chunkSize);
         second.reserve(temp);
 
         assertEquals(2, first.refCount());
         assertEquals(2, second.refCount());
-        assertEquals(1, mappedFile.refCount());
+        assertEquals(3, mappedFile.refCount());
 
         final MappedBytesStore third = mappedFile.acquireByteStore(1 + chunkSize + chunkSize);
         third.reserve(temp);
@@ -83,9 +84,10 @@ public class MappedFileTest {
         assertEquals(2, first.refCount());
         assertEquals(2, second.refCount());
         assertEquals(2, third.refCount());
-        assertEquals(1, mappedFile.refCount());
+        assertEquals(4, mappedFile.refCount());
         for (ReferenceCounted rc : new ReferenceCounted[]{first, second, third}) {
             rc.release(temp);
+            rc.releaseLast();
         }
         mappedFile.releaseLast();
     }
@@ -100,7 +102,7 @@ public class MappedFileTest {
         @NotNull MappedFile mf = MappedFile.mappedFile(tmp, chunkSize, 0);
         assertEquals("refCount: 1", mf.referenceCounts());
 
-        ReferenceOwner temp = ReferenceOwner.temporary("test");
+        ReferenceOwner temp = ReferenceOwner.temporary("temp");
 
         @Nullable MappedBytesStore bs = mf.acquireByteStore(chunkSize + (1 << 10));
         bs.reserve(temp);
@@ -131,26 +133,29 @@ public class MappedFileTest {
         } catch (BufferUnderflowException e) {
             // expected
         }
-        assertEquals(1, mf.refCount());
+        assertEquals(2, mf.refCount());
         assertEquals(3, bs.refCount());
-        assertEquals("refCount: 1, 0, 3", mf.referenceCounts());
+        assertEquals("refCount: 2, 0, 3", mf.referenceCounts());
 
-        ReferenceOwner temp2 = ReferenceOwner.temporary("test");
+        ReferenceOwner temp2 = ReferenceOwner.temporary("temp2");
         @Nullable BytesStore bs2 = mf.acquireByteStore(chunkSize + (1 << 10));
         bs2.reserve(temp2);
 
         assertEquals(4, bs2.refCount());
-        assertEquals("refCount: 1, 0, 4", mf.referenceCounts());
+        assertEquals("refCount: 2, 0, 4", mf.referenceCounts());
         bytes.releaseLast();
 
         assertEquals(3, bs2.refCount());
-        assertEquals("refCount: 1, 0, 3", mf.referenceCounts());
+        assertEquals("refCount: 2, 0, 3", mf.referenceCounts());
 
         bs2.release(temp2);
+        assert bs == bs2;
+        // bs2.releaseLast(); as bs and bs2 are the same.
         bs.release(temp);
-        assertEquals("refCount: 1, 0, 1", mf.referenceCounts());
+        bs.releaseLast();
+        assertEquals("refCount: 1, 0, 0", mf.referenceCounts());
 
-        mf.releaseLast();
+        mf.close();
         assertEquals(0, bs2.refCount());
         assertEquals(0, bs.refCount());
         assertEquals(0, mf.refCount());
@@ -159,8 +164,7 @@ public class MappedFileTest {
 
     @Test
     public void largeReadOnlyFile() throws IOException {
-        if (Runtime.getRuntime().totalMemory() < Integer.MAX_VALUE || OS.isWindows())
-            return;
+        assumeTrue(OS.isLinux());
 
         @NotNull File file = File.createTempFile("largeReadOnlyFile", "deleteme");
         file.deleteOnExit();

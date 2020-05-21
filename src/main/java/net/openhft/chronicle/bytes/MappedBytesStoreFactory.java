@@ -16,14 +16,13 @@
 
 package net.openhft.chronicle.bytes;
 
-import net.openhft.chronicle.core.ReferenceCounted;
 import org.jetbrains.annotations.NotNull;
 
 /*
  * Created by peter.lawrey on 21/09/2015.
  */
 @FunctionalInterface
-public interface MappedBytesStoreFactory<T extends MappedBytesStore> {
+public interface MappedBytesStoreFactory {
     @NotNull
-    T create(ReferenceCounted owner, long start, long address, long capacity, long safeCapacity);
+    MappedBytesStore create(MappedFile mappedFile, long start, long address, long capacity, long safeCapacity);
 }

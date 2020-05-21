@@ -17,6 +17,7 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.core.*;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,9 +36,9 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.FileLock;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -46,10 +47,11 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * avoid wasting bytes at the end of chunks.
  */
 @SuppressWarnings({"rawtypes", "unchecked", "restriction"})
-public class MappedFile implements ReferenceCounted {
+public class MappedFile implements ReferenceCounted, Closeable {
     private static final long DEFAULT_CAPACITY = 128L << 40;
     // A single JVM cannot lock a file more than once.
     private static final Object GLOBAL_FILE_LOCK = FileChannel.class;
+    private static final Map<MappedFile, StackTrace> FILES = Collections.synchronizedMap(new WeakHashMap<>());
     @NotNull
     private final RandomAccessFile raf;
     private final FileChannel fileChannel;
@@ -63,6 +65,7 @@ public class MappedFile implements ReferenceCounted {
     private final File file;
     private final boolean readOnly;
     private NewChunkListener newChunkListener = MappedFile::logNewChunk;
+    private StackTrace closedHere;
 
     protected MappedFile(@NotNull final File file,
                          @NotNull final RandomAccessFile raf,
@@ -83,7 +86,7 @@ public class MappedFile implements ReferenceCounted {
         else
             doNotCloseOnInterrupt(this.fileChannel);
 
-        assert registerMappedFile(this);
+        registerMappedFile(this);
     }
 
     private static void logNewChunk(final String filename,
@@ -101,25 +104,22 @@ public class MappedFile implements ReferenceCounted {
         Jvm.debug().on(MappedFile.class, message);
     }
 
-    private static boolean registerMappedFile(final MappedFile mappedFile) {
-//        MAPPED_FILE_THROWABLE_MAP.put(mappedFile, new Throwable("Created here"));
-        return true;
-    }
-
     public static void checkMappedFiles() {
-
-/*
-        int[] count = {0};
-        for (Map.Entry<MappedFile, Throwable> entry : MAPPED_FILE_THROWABLE_MAP.entrySet()) {
-            entry.getKey().check(entry.getValue(), count);
-        }
-        MAPPED_FILE_THROWABLE_MAP.clear();
-        if (count[0] > 0)
-            throw new AssertionError("Count: " + count[0]);
-*/
+        if (FILES.isEmpty())
+            return;
+        System.gc();
+        Jvm.pause(250);
+        List<MappedFile> closed = FILES.keySet().stream()
+                .filter(MappedFile::isClosed)
+                .collect(Collectors.toList());
+        FILES.keySet().removeAll(closed);
+        if (FILES.isEmpty())
+            return;
+        IllegalStateException ise = new IllegalStateException("Files still open");
+        FILES.values().forEach(ise::addSuppressed);
+        FILES.keySet().forEach(MappedFile::finalize);
+        throw ise;
     }
-
-//    static final Map<MappedFile, Throwable> MAPPED_FILE_THROWABLE_MAP = Collections.synchronizedMap(new IdentityHashMap<>());
 
     @NotNull
     public static MappedFile of(@NotNull final File file,
@@ -149,22 +149,6 @@ public class MappedFile implements ReferenceCounted {
     public static MappedFile mappedFile(@NotNull final File file, final long chunkSize) throws FileNotFoundException {
         return mappedFile(file, chunkSize, OS.pageSize());
     }
-
-/*
-    private void check(Throwable throwable, int[] count) {
-        for (int i = 0; i < stores.size(); i++) {
-            WeakReference<MappedBytesStore> storeRef = stores.get(i);
-            if (storeRef == null)
-                continue;
-            @Nullable MappedBytesStore mbs = storeRef.get();
-            if (mbs != null && mbs.refCount() > 0) {
-                mbs.release();
-                throwable.printStackTrace();
-                count[0]++;
-            }
-        }
-    }
-*/
 
     @NotNull
     public static MappedFile mappedFile(@NotNull final String filename, final long chunkSize) throws FileNotFoundException {
@@ -251,9 +235,26 @@ public class MappedFile implements ReferenceCounted {
                                 final int chunks,
                                 @NotNull final MappedFile mappedFile) throws IOException {
         for (int i = 0; i < chunks; i++) {
-            mappedFile.acquireBytesForRead(i * mapAlignment).releaseLast();
-            mappedFile.acquireBytesForWrite(i * mapAlignment).releaseLast();
+            assert mappedFile.refCount() == 1;
+            mappedFile.acquireBytesForRead(i * mapAlignment)
+                    .releaseLast();
+            mappedFile.acquireBytesForWrite(i * mapAlignment)
+                    .releaseLast();
         }
+    }
+
+    private static void registerMappedFile(MappedFile mappedFile) {
+        if (Jvm.isReferenceTracing())
+            FILES.put(mappedFile, new StackTrace(mappedFile.file.getAbsolutePath()));
+    }
+
+    @Override
+    public void close() {
+        if (closed.getAndSet(true))
+            return;
+        if (Jvm.isReferenceTracing())
+            closedHere = new StackTrace("Closed here");
+        releaseLast();
     }
 
     private void doNotCloseOnInterrupt(final FileChannel fc) {
@@ -299,11 +300,11 @@ public class MappedFile implements ReferenceCounted {
     }
 
     @NotNull
-    public synchronized <T extends MappedBytesStore> T acquireByteStore(final long position,
-                                                                        @NotNull final MappedBytesStoreFactory<T> mappedBytesStoreFactory)
+    public synchronized MappedBytesStore acquireByteStore(final long position,
+                                                          @NotNull final MappedBytesStoreFactory mappedBytesStoreFactory)
             throws IOException, IllegalArgumentException, IllegalStateException {
         if (closed.get())
-            throw new IOException("Closed");
+            throw new IOException("Closed", closedHere);
         if (position < 0)
             throw new IOException("Attempt to access a negative position: " + position);
         final int chunk = (int) (position / chunkSize);
@@ -314,7 +315,7 @@ public class MappedFile implements ReferenceCounted {
         }
         final WeakReference<MappedBytesStore> mbsRef = stores.get(chunk);
         if (mbsRef != null) {
-            @NotNull final T mbs = (T) mbsRef.get();
+            @NotNull final MappedBytesStore mbs = mbsRef.get();
             if (mbs != null && mbs.refCount() > 0) {
                 return mbs;
             }
@@ -350,7 +351,7 @@ public class MappedFile implements ReferenceCounted {
         final long startOfMap = chunk * chunkSize;
         final long address = OS.map(fileChannel, mode, startOfMap, mappedSize);
 
-        final T mbs2 = mappedBytesStoreFactory.create(this, chunk * this.chunkSize, address, mappedSize, this.chunkSize);
+        final MappedBytesStore mbs2 = mappedBytesStoreFactory.create(this, chunk * this.chunkSize, address, mappedSize, this.chunkSize);
         stores.set(chunk, new WeakReference<>(mbs2));
 
         final long time2 = System.nanoTime() - start;
@@ -372,6 +373,7 @@ public class MappedFile implements ReferenceCounted {
             throws IOException, IllegalStateException, IllegalArgumentException {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         final Bytes bytes = mbs.bytesForRead();
+        mbs.release(ReferenceOwner.INIT);
         bytes.readPositionUnlimited(position);
         return bytes;
     }
@@ -380,6 +382,7 @@ public class MappedFile implements ReferenceCounted {
             throws IOException, IllegalStateException, IllegalArgumentException {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         bytes.bytesStore(mbs, position, mbs.capacity() - position);
+        mbs.release(ReferenceOwner.INIT);
     }
 
     @NotNull
@@ -387,6 +390,7 @@ public class MappedFile implements ReferenceCounted {
             throws IOException, IllegalStateException, IllegalArgumentException {
         @Nullable MappedBytesStore mbs = acquireByteStore(position);
         @NotNull Bytes bytes = mbs.bytesForWrite();
+        mbs.release(ReferenceOwner.INIT);
         bytes.writePosition(position);
         return bytes;
     }
@@ -396,6 +400,7 @@ public class MappedFile implements ReferenceCounted {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         bytes.bytesStore(mbs, position, mbs.capacity() - position);
         bytes.writePosition(position);
+        mbs.release(ReferenceOwner.INIT);
     }
 
     @Override
@@ -433,13 +438,14 @@ public class MappedFile implements ReferenceCounted {
                 if (mbs != null) {
                     // this MappedFile is the only referrer to the MappedBytesStore at this point,
                     // so ensure that it is released
-                    try {
-                        if (mbs.refCount() > 0)
-                            mbs.releaseLast(this);
-                    } catch (IllegalStateException e) {
-                        if (mbs.refCount() > 0)
-                            throw e;
-                    }
+                    // if not released manually
+                    if (mbs.refCount() > 0)
+                        try {
+                            mbs.releaseLast();
+                        } catch (IllegalStateException e) {
+                            Jvm.debug().on(getClass(), "Resource not cleaned up properly ", e);
+                            mbs.performRelease();
+                        }
                 }
                 // Dereference released entities
                 storeRef.clear();
@@ -447,7 +453,6 @@ public class MappedFile implements ReferenceCounted {
             }
         } finally {
             closeQuietly(raf);
-            closed.set(true);
         }
     }
 
@@ -497,7 +502,8 @@ public class MappedFile implements ReferenceCounted {
             return actualSize();
 
         } catch (ClosedByInterruptException cbie) {
-            closed.set(true);
+            close();
+
             interrupted = true;
             throw new IllegalStateException(cbie);
 
@@ -506,7 +512,7 @@ public class MappedFile implements ReferenceCounted {
             if (open) {
                 throw new IORuntimeException(e);
             } else {
-                closed.set(true);
+                close();
                 throw new IllegalStateException(e);
             }
         } finally {
@@ -525,10 +531,14 @@ public class MappedFile implements ReferenceCounted {
     }
 
     @Override
-    protected void finalize() throws Throwable {
+    protected void finalize() {
         if (refCount() > 0)
             Jvm.warn().on(getClass(), "Discarded without being released");
         performRelease();
-        super.finalize();
+        try {
+            super.finalize();
+        } catch (Throwable throwable) {
+            Jvm.rethrow(throwable);
+        }
     }
 }

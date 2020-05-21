@@ -16,7 +16,6 @@
 
 package net.openhft.chronicle.bytes;
 
-import net.openhft.chronicle.core.ReferenceCounted;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.BufferOverflowException;
@@ -28,7 +27,7 @@ import java.nio.ByteBuffer;
  */
 public class ReadOnlyMappedBytesStore extends MappedBytesStore {
 
-    public ReadOnlyMappedBytesStore(ReferenceCounted owner, long start, long address, long capacity, long safeCapacity)
+    public ReadOnlyMappedBytesStore(MappedFile owner, long start, long address, long capacity, long safeCapacity)
             throws IllegalStateException {
         super(owner, start, address, capacity, safeCapacity);
     }

@@ -3,6 +3,7 @@ package net.openhft.chronicle.bytes.ref;
 import net.openhft.chronicle.bytes.Byteable;
 import net.openhft.chronicle.bytes.BytesStore;
 import net.openhft.chronicle.core.ReferenceOwner;
+import net.openhft.chronicle.core.StackTrace;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,6 +17,7 @@ public abstract class AbstractReference implements Byteable, Closeable, Referenc
     @Nullable
     protected BytesStore bytes;
     protected long offset;
+    private StackTrace closedHere;
 
     @Override
     public void bytesStore(@NotNull final BytesStore bytes, final long offset, final long length) throws IllegalStateException, IllegalArgumentException, BufferOverflowException, BufferUnderflowException {
@@ -50,6 +52,7 @@ public abstract class AbstractReference implements Byteable, Closeable, Referenc
         if (this.bytes != null) {
             this.bytes.release(this);
             this.bytes = null;
+            closedHere = new StackTrace("closed here");
         }
     }
 

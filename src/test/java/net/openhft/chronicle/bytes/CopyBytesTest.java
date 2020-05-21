@@ -54,9 +54,9 @@ public class CopyBytesTest {
 
     @Test
     public void testCanCopyBytesFromMappedBytes() throws Exception {
-        File bytes = File.createTempFile("mapped-test", "bytes");
-        bytes.deleteOnExit();
-        doTest(MappedBytes.mappedBytes(bytes, 64 << 10, 0), 0);
-        doTest(MappedBytes.mappedBytes(bytes, 64 << 10, 0), (64 << 10) - 8);
+        File tempFile = File.createTempFile("mapped-test", "bytes");
+        tempFile.deleteOnExit();
+        doTest(MappedBytes.mappedBytes(tempFile, 64 << 10, 0), 0);
+        doTest(MappedBytes.mappedBytes(tempFile, 64 << 10, 0), (64 << 10) - 8);
     }
 }
