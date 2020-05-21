@@ -444,7 +444,11 @@ public class MappedFile implements ReferenceCounted, Closeable {
                             mbs.releaseLast();
                         } catch (IllegalStateException e) {
                             Jvm.debug().on(getClass(), "Resource not cleaned up properly ", e);
-                            mbs.performRelease();
+                            try {
+                                mbs.performRelease();
+                            } catch (IllegalStateException e2) {
+                                Jvm.debug().on(getClass(), "Resource not cleaned up properly ", e2);
+                            }
                         }
                 }
                 // Dereference released entities
@@ -534,6 +538,8 @@ public class MappedFile implements ReferenceCounted, Closeable {
     protected void finalize() {
         if (refCount() > 0)
             Jvm.warn().on(getClass(), "Discarded without being released");
+        // so the later code
+        closed.set(true);
         performRelease();
         try {
             super.finalize();

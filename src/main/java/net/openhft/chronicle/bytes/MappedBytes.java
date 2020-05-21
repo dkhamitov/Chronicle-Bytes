@@ -128,7 +128,11 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
                                           final long overlapSize)
             throws FileNotFoundException, IllegalStateException {
         @NotNull final MappedFile rw = MappedFile.of(file, chunkSize, overlapSize, false);
-        return mappedBytes(owner, rw);
+        try {
+            return mappedBytes(owner, rw);
+        } finally {
+            rw.release(ReferenceOwner.INIT);
+        }
     }
 
     @NotNull
