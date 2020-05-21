@@ -523,4 +523,12 @@ public class MappedFile implements ReferenceCounted {
     public RandomAccessFile raf() {
         return raf;
     }
+
+    @Override
+    protected void finalize() throws Throwable {
+        if (refCount() > 0)
+            Jvm.warn().on(getClass(), "Discarded without being released");
+        performRelease();
+        super.finalize();
+    }
 }

@@ -986,4 +986,12 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
 //        super.writeCheckOffset(offset, adding);
         return bytesStore.compareAndSwapLong(offset, expected, value);
     }
+
+    @Override
+    protected void finalize() throws Throwable {
+        if (refCount() > 0)
+            Jvm.warn().on(getClass(), "Discarded without being released");
+        close();
+        super.finalize();
+    }
 }
