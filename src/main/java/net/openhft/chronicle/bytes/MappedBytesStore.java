@@ -35,6 +35,10 @@ public class MappedBytesStore extends NativeBytesStore<Void> {
         mappedFile.reserve(this);
     }
 
+    protected boolean releaseOnOne() {
+        return true;
+    }
+
     @Override
     protected synchronized void performRelease() {
         super.performRelease();

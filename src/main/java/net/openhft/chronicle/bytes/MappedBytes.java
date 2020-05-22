@@ -168,12 +168,6 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
         return new MappedBytes(rw);
     }
 
-    @Override
-    void performRelease() throws IllegalStateException {
-        mappedFile.release(this);
-        super.performRelease();
-    }
-
     @NotNull
     public static MappedBytes readOnly(@NotNull final File file) throws FileNotFoundException {
         MappedFile mappedFile = MappedFile.readOnly(file);
@@ -182,6 +176,12 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
         } finally {
             mappedFile.release(ReferenceOwner.INIT);
         }
+    }
+
+    @Override
+    void performRelease() throws IllegalStateException {
+        mappedFile.release(this);
+        super.performRelease();
     }
 
     @NotNull
@@ -452,7 +452,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
             @Nullable final BytesStore newBS = mappedFile.acquireByteStore(offset);
             this.bytesStore = newBS;
             if (newBS != oldBS) {
-                newBS.reserveTransfer(INIT, this);
+                newBS.reserve(this);
                 oldBS.release(this);
             }
 
@@ -822,11 +822,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
 
     @Override
     public void close() {
-        try {
-            this.release(INIT);
-        } catch (IllegalStateException ignored) {
-            ignored.printStackTrace();
-        }
+        this.release(INIT);
     }
 
     @Override

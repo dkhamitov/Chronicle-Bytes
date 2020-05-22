@@ -87,7 +87,6 @@ public class MappedFileTest {
         assertEquals(4, mappedFile.refCount());
         for (ReferenceCounted rc : new ReferenceCounted[]{first, second, third}) {
             rc.release(temp);
-            rc.releaseLast();
         }
         mappedFile.releaseLast();
     }
@@ -152,7 +151,6 @@ public class MappedFileTest {
         assert bs == bs2;
         // bs2.releaseLast(); as bs and bs2 are the same.
         bs.release(temp);
-        bs.releaseLast();
         assertEquals("refCount: 1, 0, 0", mf.referenceCounts());
 
         mf.close();

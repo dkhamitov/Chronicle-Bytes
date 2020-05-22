@@ -373,7 +373,6 @@ public class MappedFile implements ReferenceCounted, Closeable {
             throws IOException, IllegalStateException, IllegalArgumentException {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         final Bytes bytes = mbs.bytesForRead();
-        mbs.release(ReferenceOwner.INIT);
         bytes.readPositionUnlimited(position);
         return bytes;
     }
@@ -382,7 +381,6 @@ public class MappedFile implements ReferenceCounted, Closeable {
             throws IOException, IllegalStateException, IllegalArgumentException {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         bytes.bytesStore(mbs, position, mbs.capacity() - position);
-        mbs.release(ReferenceOwner.INIT);
     }
 
     @NotNull
@@ -390,7 +388,6 @@ public class MappedFile implements ReferenceCounted, Closeable {
             throws IOException, IllegalStateException, IllegalArgumentException {
         @Nullable MappedBytesStore mbs = acquireByteStore(position);
         @NotNull Bytes bytes = mbs.bytesForWrite();
-        mbs.release(ReferenceOwner.INIT);
         bytes.writePosition(position);
         return bytes;
     }
@@ -400,7 +397,6 @@ public class MappedFile implements ReferenceCounted, Closeable {
         @Nullable final MappedBytesStore mbs = acquireByteStore(position);
         bytes.bytesStore(mbs, position, mbs.capacity() - position);
         bytes.writePosition(position);
-        mbs.release(ReferenceOwner.INIT);
     }
 
     @Override

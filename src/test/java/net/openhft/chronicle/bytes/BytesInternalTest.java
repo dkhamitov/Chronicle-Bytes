@@ -384,12 +384,13 @@ public class BytesInternalTest {
         Assert.assertEquals("Different " + (100.0 * different) / max + "%", 0, different);
     }
 
+    @SuppressWarnings("unused")
     static class Nested {
         public static final int LENGTH;
 
         static {
             long totalMemory = Runtime.getRuntime().totalMemory();
-            int maxLength = 1 << 29;
+            int maxLength = 1 << 28;
             LENGTH = (int) Math.min(totalMemory / 9, maxLength);
             if (LENGTH < maxLength)
                 System.out.println("Not enough memory to run big test, was " + (LENGTH >> 20) + " MB.");

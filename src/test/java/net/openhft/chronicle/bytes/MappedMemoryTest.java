@@ -133,7 +133,9 @@ public class MappedMemoryTest {
         @NotNull File tempFile = File.createTempFile("chronicle", "q");
         try {
 
+            MappedBytes bytes0;
             try (MappedBytes bytes = mappedBytes(tempFile, OS.pageSize())) {
+                bytes0 = bytes;
                 assertEquals(1, bytes.refCount());
                 ReferenceOwner temp = ReferenceOwner.temporary("test");
                 bytes.reserve(temp);
@@ -147,9 +149,8 @@ public class MappedMemoryTest {
                 assertEquals(text, textValue.substring(chars.length + 4));
                 bytes.release(temp);
                 assertEquals(1, bytes.refCount());
-                bytes.releaseLast();
-                assertEquals(0, bytes.refCount());
             }
+            assertEquals(0, bytes0.refCount());
         } finally {
             tempFile.delete();
         }

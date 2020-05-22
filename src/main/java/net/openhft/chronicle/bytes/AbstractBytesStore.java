@@ -29,7 +29,11 @@ import java.nio.BufferUnderflowException;
  */
 public abstract class AbstractBytesStore<B extends BytesStore<B, Underlying>, Underlying>
         implements BytesStore<B, Underlying> {
-    protected final ReferenceCounted referenceCounted = ReferenceCounter.onReleased(this::performRelease);
+    protected final ReferenceCounted referenceCounted = ReferenceCounter.onReleased(this::performRelease, this.releaseOnOne());
+
+    protected boolean releaseOnOne() {
+        return false;
+    }
 
     @Override
     public void reserve(ReferenceOwner id) throws IllegalStateException {
