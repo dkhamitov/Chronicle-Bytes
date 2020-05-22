@@ -158,8 +158,8 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     @NotNull
     public static MappedBytes mappedBytes(ReferenceOwner owner, @NotNull final MappedFile rw) {
         MappedBytes bytes = new MappedBytes(rw);
-        if (owner != INIT)
-            bytes.reserveTransfer(INIT, owner);
+        assert owner != INIT;
+        bytes.reserve(owner);
         return bytes;
     }
 
