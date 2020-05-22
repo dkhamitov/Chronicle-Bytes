@@ -31,7 +31,6 @@ import java.util.Arrays;
 
 import static net.openhft.chronicle.bytes.MappedBytes.mappedBytes;
 import static net.openhft.chronicle.bytes.MappedFile.mappedFile;
-import static net.openhft.chronicle.core.ReferenceOwner.INIT;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("rawtypes")
@@ -83,7 +82,7 @@ public class MappedMemoryTest {
             try {
 
                 long startTime = System.nanoTime();
-                try (MappedBytes bytes = mappedBytes(INIT, tempFile, BLOCK_SIZE / 2)) {
+                try (MappedBytes bytes = mappedBytes(tempFile, BLOCK_SIZE / 2, BLOCK_SIZE / 8)) {
 //                bytes.writeLong(1, 1);
                     for (long i = 0; i < BLOCK_SIZE; i += 8) {
                         bytes.writeLong(i);
@@ -134,7 +133,7 @@ public class MappedMemoryTest {
         try {
 
             MappedBytes bytes0;
-            try (MappedBytes bytes = mappedBytes(tempFile, OS.pageSize())) {
+            try (MappedBytes bytes = mappedBytes(tempFile, OS.pageSize(), OS.pageSize())) {
                 bytes0 = bytes;
                 assertEquals(1, bytes.refCount());
                 ReferenceOwner temp = ReferenceOwner.temporary("test");

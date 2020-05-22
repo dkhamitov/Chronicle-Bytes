@@ -17,6 +17,7 @@
  */
 package net.openhft.chronicle.bytes;
 
+import net.openhft.chronicle.core.io.Closeable;
 import org.junit.Test;
 
 import java.io.File;
@@ -42,7 +43,10 @@ public class CopyBytesTest {
         assertEquals((long) 'W' << 56L | 200L, toValidate.readLong(8));
         assertEquals((long) 'W' << 56L | 100L, toValidate.readLong(16));
 
-        toTest.releaseLast();
+        if (toTest instanceof MappedBytes)
+            Closeable.closeQuietly(toTest);
+        else
+            toTest.releaseLast();
         toCopy.releaseLast();
         toValidate.releaseLast();
     }
@@ -56,7 +60,9 @@ public class CopyBytesTest {
     public void testCanCopyBytesFromMappedBytes() throws Exception {
         File tempFile = File.createTempFile("mapped-test", "bytes");
         tempFile.deleteOnExit();
+
         doTest(MappedBytes.mappedBytes(tempFile, 64 << 10, 0), 0);
+
         doTest(MappedBytes.mappedBytes(tempFile, 64 << 10, 0), (64 << 10) - 8);
     }
 }

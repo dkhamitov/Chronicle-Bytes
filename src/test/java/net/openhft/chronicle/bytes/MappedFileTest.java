@@ -166,6 +166,7 @@ public class MappedFileTest {
 
         @NotNull File file = File.createTempFile("largeReadOnlyFile", "deleteme");
         file.deleteOnExit();
+
         try (@NotNull MappedBytes bytes = MappedBytes.mappedBytes(file, 1 << 30, OS.pageSize())) {
             bytes.writeLong(3L << 30, 0x12345678); // make the file 3 GB.
         }

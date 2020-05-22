@@ -41,7 +41,7 @@ public class MemoryWriteJitterMain {
 
         Thread writer = new Thread(() -> {
             try {
-                MappedBytes mf = MappedBytes.mappedBytes(file, 1 << 20);
+                MappedBytes mf = MappedBytes.mappedBytes(file, 1 << 20, OS.pageSize());
                 MemoryMessager mm = new MemoryMessager(mf, padTo);
                 int intervalNS = (int) (1e9 / throughput);
                 while (running) {
@@ -67,7 +67,7 @@ public class MemoryWriteJitterMain {
         writer.setDaemon(true);
         writer.start();
 
-        MappedBytes mf = MappedBytes.mappedBytes(file, 1 << 20);
+        MappedBytes mf = MappedBytes.mappedBytes(file, 1 << 20, OS.pageSize());
         mf.readLimit(mf.writeLimit());
         MemoryMessager mm = new MemoryMessager(mf, padTo);
 

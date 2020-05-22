@@ -48,7 +48,6 @@ import static net.openhft.chronicle.core.util.StringUtils.*;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class MappedBytes extends AbstractBytes<Void> implements Closeable {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(MappedBytes.class);
     private static final Set<WeakReference<MappedBytes>> MAPPED_BYTES = newSetFromMap(new ConcurrentHashMap<>());
     private static final boolean ENFORCE_SINGLE_THREADED_ACCESS = Boolean.getBoolean("chronicle.bytes.enforceSingleThreadedAccess");
@@ -106,19 +105,11 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     }
 
     @NotNull
-    public static MappedBytes mappedBytes(
-            @NotNull final File file,
-            final long chunkSize)
-            throws FileNotFoundException, IllegalStateException {
-        return mappedBytes(INIT, file, chunkSize, OS.pageSize());
-    }
-
-    @NotNull
     public static MappedBytes mappedBytes(@NotNull final File file,
                                           final long chunkSize,
-                                          final long overlapSize) throws FileNotFoundException {
+                                          final long overlapSize)
+            throws FileNotFoundException, IllegalStateException {
         return mappedBytes(INIT, file, chunkSize, overlapSize);
-
     }
 
     @NotNull
@@ -127,21 +118,12 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
                                           final long chunkSize,
                                           final long overlapSize)
             throws FileNotFoundException, IllegalStateException {
-        @NotNull final MappedFile rw = MappedFile.of(file, chunkSize, overlapSize, false);
+        @NotNull final MappedFile mappedFile = MappedFile.of(file, chunkSize, overlapSize, false);
         try {
-            return mappedBytes(owner, rw);
+            return mappedBytes(owner, mappedFile);
         } finally {
-            rw.release(ReferenceOwner.INIT);
+            mappedFile.release(ReferenceOwner.INIT);
         }
-    }
-
-    @NotNull
-    public static MappedBytes mappedBytes(@NotNull final File file,
-                                          final long chunkSize,
-                                          final long overlapSize,
-                                          final boolean readOnly) throws FileNotFoundException,
-            IllegalStateException {
-        return mappedBytes(INIT, file, chunkSize, overlapSize, readOnly);
     }
 
     @NotNull
@@ -151,15 +133,21 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
                                           final long overlapSize,
                                           final boolean readOnly) throws FileNotFoundException,
             IllegalStateException {
-        @NotNull final MappedFile rw = MappedFile.of(file, chunkSize, overlapSize, readOnly);
-        return mappedBytes(owner, rw);
+        @NotNull final MappedFile mappedFile = MappedFile.of(file, chunkSize, overlapSize, readOnly);
+        try {
+            return mappedBytes(owner, mappedFile);
+        } finally {
+            mappedFile.release(ReferenceOwner.INIT);
+        }
     }
 
     @NotNull
     public static MappedBytes mappedBytes(ReferenceOwner owner, @NotNull final MappedFile rw) {
         MappedBytes bytes = new MappedBytes(rw);
-        assert owner != INIT;
-        bytes.reserve(owner);
+        if (owner != INIT) {
+            bytes.reserve(owner);
+        }
+
         return bytes;
     }
 

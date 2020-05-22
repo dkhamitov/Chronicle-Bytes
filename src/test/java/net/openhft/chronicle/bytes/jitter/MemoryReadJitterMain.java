@@ -39,7 +39,7 @@ public class MemoryReadJitterMain {
         final Histogram histoReadWrite = new Histogram();
 
         Thread reader = new Thread(() -> {
-            try (MappedBytes mf = MappedBytes.mappedBytes(file, 64 << 10)) {
+            try (MappedBytes mf = MappedBytes.mappedBytes(file, 64 << 10, OS.pageSize())) {
                 mf.readLimit(mf.writeLimit());
                 MemoryMessager mm = new MemoryMessager(mf, padTo);
                 boolean found = false;
@@ -84,7 +84,7 @@ public class MemoryReadJitterMain {
         Jvm.pause(100); // give it time to start
 
         long count = 0;
-        MappedBytes mf = MappedBytes.mappedBytes(file, 64 << 10);
+        MappedBytes mf = MappedBytes.mappedBytes(file, 64 << 10, OS.pageSize());
         MemoryMessager mm = new MemoryMessager(mf, padTo);
         long start0 = System.currentTimeMillis();
         int sampleNS = sampleTime * 1000;
