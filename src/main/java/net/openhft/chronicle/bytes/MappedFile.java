@@ -115,9 +115,13 @@ public class MappedFile implements ReferenceCounted, Closeable {
         FILES.keySet().removeAll(closed);
         if (FILES.isEmpty())
             return;
+        Map<MappedFile, StackTrace> files;
+        synchronized (FILES) {
+            files = new HashMap<>(FILES);
+        }
         IllegalStateException ise = new IllegalStateException("Files still open");
-        FILES.values().forEach(ise::addSuppressed);
-        FILES.keySet().forEach(MappedFile::finalize);
+        files.values().forEach(ise::addSuppressed);
+        files.keySet().forEach(MappedFile::finalize);
         throw ise;
     }
 
