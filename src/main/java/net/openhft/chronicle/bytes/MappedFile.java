@@ -455,8 +455,13 @@ public class MappedFile implements ReferenceCounted, Closeable {
                 storeRef.clear();
                 stores.set(i, null);
             }
+        } catch (Throwable t) {
+            Jvm.warn().on(getClass(), "Error while performRelease", t);
+
         } finally {
             closeQuietly(raf);
+            closed.set(true);
+            FILES.remove(this);
         }
     }
 

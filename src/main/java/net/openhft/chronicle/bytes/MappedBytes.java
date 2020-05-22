@@ -170,10 +170,8 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
 
     @Override
     void performRelease() throws IllegalStateException {
-        if ((BytesStore) bytesStore instanceof MappedBytesStore)
-            mappedFile.release(bytesStore);
-        super.performRelease();
         mappedFile.release(this);
+        super.performRelease();
     }
 
     @NotNull
@@ -454,7 +452,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
             @Nullable final BytesStore newBS = mappedFile.acquireByteStore(offset);
             this.bytesStore = newBS;
             if (newBS != oldBS) {
-                newBS.reserve(this);
+                newBS.reserveTransfer(INIT, this);
                 oldBS.release(this);
             }
 
@@ -827,7 +825,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
         try {
             this.release(INIT);
         } catch (IllegalStateException ignored) {
-            // TODO can this be fixed
+            ignored.printStackTrace();
         }
     }
 
