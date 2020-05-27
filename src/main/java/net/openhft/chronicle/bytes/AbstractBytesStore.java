@@ -63,6 +63,11 @@ public abstract class AbstractBytesStore<B extends BytesStore<B, Underlying>, Un
     protected abstract void performRelease();
 
     @Override
+    public void checkReferences() {
+        referenceCounted.checkReferences();
+    }
+
+    @Override
     public int peekUnsignedByte(long offset) throws BufferUnderflowException {
         return offset >= readLimit() ? -1 : readUnsignedByte(offset);
     }

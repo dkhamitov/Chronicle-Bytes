@@ -167,7 +167,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     }
 
     @Override
-    void performRelease() throws IllegalStateException {
+    protected void performRelease() throws IllegalStateException {
         mappedFile.release(this);
         super.performRelease();
     }
@@ -810,7 +810,11 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
 
     @Override
     public void close() {
+        if (isClosed())
+            return;
+
         this.release(INIT);
+        super.close();
     }
 
     @Override

@@ -423,6 +423,11 @@ public class UncheckedNativeBytes<Underlying> implements Bytes<Underlying> {
         return refCount.refCount();
     }
 
+    @Override
+    public void checkReferences() {
+        refCount.checkReferences();
+    }
+
     @NotNull
     @Override
     @ForceInline

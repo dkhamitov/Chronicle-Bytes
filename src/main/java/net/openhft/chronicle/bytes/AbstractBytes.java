@@ -19,9 +19,7 @@ package net.openhft.chronicle.bytes;
 import net.openhft.chronicle.bytes.algo.BytesStoreHash;
 import net.openhft.chronicle.bytes.util.DecoratedBufferOverflowException;
 import net.openhft.chronicle.bytes.util.DecoratedBufferUnderflowException;
-import net.openhft.chronicle.core.ReferenceCounted;
-import net.openhft.chronicle.core.ReferenceCounter;
-import net.openhft.chronicle.core.ReferenceOwner;
+import net.openhft.chronicle.core.AbstractReferenceCounted;
 import net.openhft.chronicle.core.annotation.UsedViaReflection;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.UnsafeText;
@@ -33,13 +31,12 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 @SuppressWarnings("rawtypes")
-public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
+public abstract class AbstractBytes<Underlying> extends AbstractReferenceCounted implements Bytes<Underlying> {
     // used for debugging
     @UsedViaReflection
     private final String name;
     @NotNull
     protected BytesStore<Bytes<Underlying>, Underlying> bytesStore;
-    protected final ReferenceCounted refCount = ReferenceCounter.onReleased(this::performRelease);
     protected long readPosition;
     protected long writePosition;
     protected long writeLimit;
@@ -330,12 +327,13 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
         return new DecoratedBufferOverflowException(String.format("writeLimit failed. Limit: %d < start: %d", limit, start()));
     }
 
-    void performRelease() throws IllegalStateException {
+    protected void performRelease() throws IllegalStateException {
         try {
             this.bytesStore.release(this);
         } finally {
             this.bytesStore = NoBytesStore.noBytesStore();
         }
+        super.performRelease();
     }
 
     @Override
@@ -501,31 +499,6 @@ public abstract class AbstractBytes<Underlying> implements Bytes<Underlying> {
         readPosition += adding;
         assert readPosition <= readLimit();
         return offset;
-    }
-
-    @Override
-    public void reserve(ReferenceOwner id) throws IllegalStateException {
-        refCount.reserve(id);
-    }
-
-    @Override
-    public void release(ReferenceOwner id) throws IllegalStateException {
-        refCount.release(id);
-    }
-
-    @Override
-    public void releaseLast(ReferenceOwner id) {
-        refCount.releaseLast(id);
-    }
-
-    @Override
-    public int refCount() {
-        return refCount.refCount();
-    }
-
-    @Override
-    public boolean tryReserve(ReferenceOwner id) {
-        return refCount.tryReserve(id);
     }
 
     @NotNull

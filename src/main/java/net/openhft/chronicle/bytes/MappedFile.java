@@ -37,7 +37,6 @@ import java.nio.channels.FileLock;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
@@ -47,7 +46,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * avoid wasting bytes at the end of chunks.
  */
 @SuppressWarnings({"rawtypes", "unchecked", "restriction"})
-public class MappedFile implements ReferenceCounted, Closeable {
+public class MappedFile extends AbstractReferenceCounted implements Closeable {
     private static final long DEFAULT_CAPACITY = 128L << 40;
     // A single JVM cannot lock a file more than once.
     private static final Object GLOBAL_FILE_LOCK = FileChannel.class;
@@ -58,14 +57,11 @@ public class MappedFile implements ReferenceCounted, Closeable {
     private final long chunkSize;
     private final long overlapSize;
     private final List<WeakReference<MappedBytesStore>> stores = new ArrayList<>();
-    private final AtomicBoolean closed = new AtomicBoolean();
-    private final ReferenceCounted refCount = ReferenceCounter.onReleased(this::performRelease);
     private final long capacity;
     @NotNull
     private final File file;
     private final boolean readOnly;
     private NewChunkListener newChunkListener = MappedFile::logNewChunk;
-    private StackTrace closedHere;
 
     protected MappedFile(@NotNull final File file,
                          @NotNull final RandomAccessFile raf,
@@ -73,6 +69,7 @@ public class MappedFile implements ReferenceCounted, Closeable {
                          final long overlapSize,
                          final long capacity,
                          final boolean readOnly) {
+
         this.file = file;
         this.raf = raf;
         this.fileChannel = raf.getChannel();
@@ -248,17 +245,16 @@ public class MappedFile implements ReferenceCounted, Closeable {
     }
 
     private static void registerMappedFile(MappedFile mappedFile) {
-        if (Jvm.isReferenceTracing())
+        if (Jvm.isResourceTracing())
             FILES.put(mappedFile, new StackTrace(mappedFile.file.getAbsolutePath()));
     }
 
     @Override
     public void close() {
-        if (closed.getAndSet(true))
+        if (isClosed())
             return;
-        if (Jvm.isReferenceTracing())
-            closedHere = new StackTrace("Closed here");
         releaseLast();
+        super.close();
     }
 
     private void doNotCloseOnInterrupt(final FileChannel fc) {
@@ -307,8 +303,7 @@ public class MappedFile implements ReferenceCounted, Closeable {
     public synchronized MappedBytesStore acquireByteStore(final long position,
                                                           @NotNull final MappedBytesStoreFactory mappedBytesStoreFactory)
             throws IOException, IllegalArgumentException, IllegalStateException {
-        if (closed.get())
-            throw new IOException("Closed", closedHere);
+        checkIsNotClosed();
         if (position < 0)
             throw new IOException("Attempt to access a negative position: " + position);
         final int chunk = (int) (position / chunkSize);
@@ -403,66 +398,11 @@ public class MappedFile implements ReferenceCounted, Closeable {
         bytes.writePosition(position);
     }
 
-    @Override
-    public void reserve(ReferenceOwner id) throws IllegalStateException {
-        refCount.reserve(id);
-    }
-
-    @Override
-    public void release(ReferenceOwner id) throws IllegalStateException {
-        refCount.release(id);
-    }
-
-    @Override
-    public void releaseLast(ReferenceOwner id) {
-        refCount.releaseLast(id);
-    }
-
-    @Override
-    public boolean tryReserve(ReferenceOwner id) {
-        return refCount.tryReserve(id);
-    }
-
-    @Override
-    public int refCount() {
-        return refCount.refCount();
-    }
-
-    private synchronized void performRelease() {
-        try {
-            for (int i = 0; i < stores.size(); i++) {
-                final WeakReference<MappedBytesStore> storeRef = stores.get(i);
-                if (storeRef == null)
-                    continue;
-                @Nullable final MappedBytesStore mbs = storeRef.get();
-                if (mbs != null) {
-                    // this MappedFile is the only referrer to the MappedBytesStore at this point,
-                    // so ensure that it is released
-                    // if not released manually
-                    if (mbs.refCount() > 0)
-                        try {
-                            mbs.releaseLast();
-                        } catch (IllegalStateException e) {
-                            Jvm.debug().on(getClass(), "Resource not cleaned up properly ", e);
-                            try {
-                                mbs.performRelease();
-                            } catch (IllegalStateException e2) {
-                                Jvm.debug().on(getClass(), "Resource not cleaned up properly ", e2);
-                            }
-                        }
-                }
-                // Dereference released entities
-                storeRef.clear();
-                stores.set(i, null);
-            }
-        } catch (Throwable t) {
-            Jvm.warn().on(getClass(), "Error while performRelease", t);
-
-        } finally {
-            closeQuietly(raf);
-            closed.set(true);
-            FILES.remove(this);
-        }
+    protected synchronized void performRelease() {
+        super.close();
+        stores.clear();
+        closeQuietly(raf);
+        FILES.remove(this);
     }
 
     @NotNull
@@ -530,10 +470,6 @@ public class MappedFile implements ReferenceCounted, Closeable {
         }
     }
 
-    public boolean isClosed() {
-        return closed.get();
-    }
-
     @NotNull
     public RandomAccessFile raf() {
         return raf;
@@ -541,11 +477,10 @@ public class MappedFile implements ReferenceCounted, Closeable {
 
     @Override
     protected void finalize() {
-        if (refCount() > 0)
-            Jvm.warn().on(getClass(), "Discarded without being released");
-        // so the later code
-        closed.set(true);
-        performRelease();
+        checkFinalize();
+        // no longer needed.
+        stores.clear();
+        // performRelease only when the resources which use it are released.
         try {
             super.finalize();
         } catch (Throwable throwable) {

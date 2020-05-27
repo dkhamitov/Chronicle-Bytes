@@ -70,6 +70,12 @@ public enum NoBytesStore implements BytesStore {
         return 0;
     }
 
+    @Override
+    public void checkReferences() {
+
+    }
+
+
     @NotNull
     @Override
     public RandomDataOutput writeByte(long offset, byte i8) {

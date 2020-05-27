@@ -269,11 +269,6 @@ public class HexDumpBytes implements Bytes<Void> {
     }
 
     @Override
-    public int refCount() {
-        return base.refCount();
-    }
-
-    @Override
     public boolean tryReserve(ReferenceOwner id) {
         text.tryReserve(id);
         return base.tryReserve(id);
@@ -283,6 +278,16 @@ public class HexDumpBytes implements Bytes<Void> {
     public void releaseLast(ReferenceOwner id) {
         text.releaseLast(id);
         base.releaseLast(id);
+    }
+
+    @Override
+    public int refCount() {
+        return base.refCount();
+    }
+
+    @Override
+    public void checkReferences() {
+        base.checkReferences();
     }
 
     @Override
