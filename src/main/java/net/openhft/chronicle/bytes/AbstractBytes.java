@@ -1065,7 +1065,7 @@ public abstract class AbstractBytes<Underlying>
         return Bytes.super.byteCheckSum(start, end);
     }
 
-    public int byteCheckSum(int start, int end) {
+    protected int byteCheckSum(int start, int end) {
         int sum = 0;
         for (int i = start; i < end; i++) {
             sum += readByte(i);
