@@ -514,9 +514,8 @@ public class VanillaBytes<Underlying>
         }
     }
 
-    // TODO: protected?
     @Override
-    public int byteCheckSum(int start, int end) throws IORuntimeException {
+    protected int byteCheckSum(int start, int end) throws IORuntimeException {
         byte b = 0;
         // the below cast is safe as should only be called from net.openhft.chronicle.bytes.AbstractBytes.byteCheckSum(long, long)
         @Nullable NativeBytesStore bytesStore = (NativeBytesStore) bytesStore();
