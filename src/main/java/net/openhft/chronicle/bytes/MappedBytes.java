@@ -19,10 +19,7 @@
 package net.openhft.chronicle.bytes;
 
 import net.openhft.chronicle.bytes.util.DecoratedBufferOverflowException;
-import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.Memory;
-import net.openhft.chronicle.core.OS;
-import net.openhft.chronicle.core.UnsafeMemory;
+import net.openhft.chronicle.core.*;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.ReferenceOwner;
@@ -51,6 +48,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     private final MappedFile mappedFile;
     private final boolean backingFileIsReadOnly;
     private boolean closed;
+    private volatile StackTrace closedHere;
 
     // assume the mapped file is reserved already.
     protected MappedBytes(@NotNull final MappedFile mappedFile) throws IllegalStateException {
@@ -865,6 +863,15 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
             return;
         release(INIT);
         closed = true;
+        if (Jvm.isResourceTracing())
+            closedHere = new StackTrace("Closed here");
+    }
+
+    @Override
+    public void throwExceptionIfClosed() throws IllegalStateException {
+        throwExceptionIfReleased();
+        if (isClosed())
+            throw new IllegalStateException("Closed", closedHere);
     }
 
     @Override

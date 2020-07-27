@@ -3,6 +3,7 @@ package net.openhft.chronicle.bytes;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.OS;
 import net.openhft.chronicle.core.io.IOTools;
+import net.openhft.chronicle.core.io.ReferenceOwner;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -451,5 +452,25 @@ public class MappedBytesTest extends BytesTestCommon {
             assertEquals(count, mb.readVolatileLong(0));
         }
         IOTools.deleteDirWithFiles(tmpfile, 2);
+    }
+
+    @Test
+    public void closeMappedFile() throws FileNotFoundException {
+        String tmpfile = IOTools.createTempFile("closeMappedFile").getAbsolutePath();
+        MappedBytes mb = MappedBytes.mappedBytes(tmpfile, 256 << 10);
+        ReferenceOwner ro = ReferenceOwner.temporary("test1");
+        mb.reserve(ro);
+        mb.close();
+        assertTrue(mb.refCount() > 0);
+
+        mb.throwExceptionIfReleased();
+        try {
+            mb.throwExceptionIfClosed();
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getCause() != e);
+        }
+        mb.release(ro);
+        mb.throwExceptionIfNotReleased();
     }
 }
