@@ -94,7 +94,8 @@ public class ByteStoreTest extends BytesTestCommon {
 
     @Test
     public void testCAS() {
-        if (Jvm.isArm()) return; // TODO FIX
+        assumeFalse(Jvm.isArm()); // TODO FIX
+
         @NotNull BytesStore bytes = BytesStore.wrap(ByteBuffer.allocate(100));
         bytes.compareAndSwapLong(0, 0L, 1L);
         assertEquals(1L, bytes.readLong(0));
@@ -134,7 +135,7 @@ public class ByteStoreTest extends BytesTestCommon {
 
     @Test
     public void testCompareAndSetLong() {
-        if (Jvm.isArm()) return; // TODO FIX
+        assumeFalse(Jvm.isArm()); // TODO FIX
 
         Assert.assertTrue(bytes.compareAndSwapLong(0L, 0L, 1L));
         Assert.assertFalse(bytes.compareAndSwapLong(0L, 0L, 1L));

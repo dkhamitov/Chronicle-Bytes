@@ -422,8 +422,8 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     }
 
     // DON'T call this directly.
-    // TODO Check whether we need synchronized; original comment; require protection from concurrent mutation to bytesStore field
-    private synchronized void acquireNextByteStore0(final long offset, final boolean set) {
+    // MappedBytes is single threaded.
+    private void acquireNextByteStore0(final long offset, final boolean set) {
         throwExceptionIfClosed();
 
         @Nullable final BytesStore oldBS = this.bytesStore;

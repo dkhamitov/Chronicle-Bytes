@@ -1124,7 +1124,7 @@ public class HexDumpBytes
         @Override
         public int read(@NotNull char[] cbuf, int off, int len) throws IOException {
             int len2 = reader.read(cbuf, off, len);
-            base.append(new String(cbuf, off, len)); // TODO Optimise
+            base.append(new String(cbuf, off, len));
             return len2;
         }
 

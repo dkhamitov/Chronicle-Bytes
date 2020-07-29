@@ -260,27 +260,6 @@ public class BytesMarshaller<T> {
         }
     }
 
-/*
-    static class ArrayFieldAccess extends FieldAccess {
-        private final Class componentType;
-
-        public ArrayFieldAccess(@NotNull Field field) {
-            super(field);
-            componentType = field.getType().getComponentType();
-        }
-
-        @Override
-        protected void getValue(Object o, BytesOut write) throws IllegalAccessException {
-            throw new UnsupportedOperationException("TODO");
-        }
-
-        @Override
-        protected void setValue(Object o, BytesIn read) throws IllegalAccessException {
-            throw new UnsupportedOperationException("TODO");
-        }
-    }
-*/
-
     static class CollectionFieldAccess extends FieldAccess {
         final Supplier<Collection> collectionSupplier;
         @NotNull
