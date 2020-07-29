@@ -380,8 +380,8 @@ public class ByteStoreTest extends BytesTestCommon {
 
     @Test
     public void testReadWriteThreadSafeLong() {
-        if (Jvm.isArm())
-            return; // TODO FIX
+        assumeFalse(Jvm.isArm()); // TODO FIX
+
         for (long i = 0; i < 32; i += 8)
             bytes.writeOrderedLong(i, i);
         bytes.writePosition(32);
@@ -508,8 +508,8 @@ public class ByteStoreTest extends BytesTestCommon {
 
     @Test
     public void testAddAndGetLong() {
-        if (Jvm.isArm())
-            return; // TODO FIX
+        assumeFalse(Jvm.isArm()); // TODO FIX
+
         bytesStore = BytesStore.wrap(new byte[128]);
 
         checkAddAndGetLong();
