@@ -45,7 +45,7 @@ public class UncheckedLongReference extends UnsafeCloseable implements LongRefer
             this.bytes = bytes;
             bytes.reserve(this);
         }
-        address(bytes.addressForRead(offset));
+        address(bytes.addressForRead(offset, 8));
     }
 
     @NotNull

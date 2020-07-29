@@ -521,7 +521,7 @@ public class VanillaBytes<Underlying>
         @Nullable NativeBytesStore bytesStore = (NativeBytesStore) bytesStore();
         @Nullable Memory memory = bytesStore.memory;
         assert memory != null;
-        long addr = bytesStore.addressForRead(start);
+        long addr = bytesStore.addressForRead(start, end - start);
         int i = 0, len = end - start;
         for (; i < len - 3; i += 4) {
             b += memory.readByte(addr + i)

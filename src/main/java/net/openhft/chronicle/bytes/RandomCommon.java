@@ -104,7 +104,7 @@ interface RandomCommon extends ReferenceCounted {
     long addressForRead(long offset)
             throws UnsupportedOperationException, BufferUnderflowException;
 
-    default long addressForRead(long offset, int buffer)
+    default long addressForRead(long offset, long buffer)
             throws UnsupportedOperationException, BufferUnderflowException {
         return addressForRead(offset);
     }
@@ -119,6 +119,10 @@ interface RandomCommon extends ReferenceCounted {
      */
     long addressForWrite(long offset)
             throws UnsupportedOperationException, BufferOverflowException;
+
+    default long addressForWrite(long offset, long size) {
+        return addressForWrite(offset);
+    }
 
     long addressForWritePosition()
             throws UnsupportedOperationException, BufferOverflowException;

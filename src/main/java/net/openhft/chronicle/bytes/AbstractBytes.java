@@ -950,8 +950,18 @@ public abstract class AbstractBytes<Underlying>
     }
 
     @Override
+    public long addressForRead(long offset, long buffer) throws UnsupportedOperationException, BufferUnderflowException {
+        return bytesStore.addressForRead(offset, buffer);
+    }
+
+    @Override
     public long addressForWrite(long offset) throws UnsupportedOperationException, BufferOverflowException {
         return bytesStore.addressForWrite(offset);
+    }
+
+    @Override
+    public long addressForWrite(long offset, long size) {
+        return bytesStore.addressForWrite(offset, size);
     }
 
     @Override

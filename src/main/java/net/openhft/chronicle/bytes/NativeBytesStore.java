@@ -493,7 +493,10 @@ public class NativeBytesStore<Underlying>
             long writeOffset, @NotNull RandomDataInput bytes, long readOffset, long length)
             throws BufferOverflowException, BufferUnderflowException {
         if (bytes.isDirectMemory()) {
-            memory.copyMemory(bytes.addressForRead(readOffset), addressForWrite(writeOffset), length);
+            memory.copyMemory(
+                    bytes.addressForRead(readOffset, length),
+                    addressForWrite(writeOffset, length),
+                    length);
         } else {
             write0(writeOffset, bytes, readOffset, length);
         }
@@ -518,8 +521,22 @@ public class NativeBytesStore<Underlying>
     }
 
     @Override
+    public long addressForRead(long offset, long buffer) throws UnsupportedOperationException, BufferUnderflowException {
+        if (offset < start() || offset + buffer > realCapacity())
+            throw new BufferUnderflowException();
+        return address + translate(offset);
+    }
+
+    @Override
     public long addressForWrite(long offset) throws BufferOverflowException {
         if (offset < start() || offset > realCapacity())
+            throw new BufferOverflowException();
+        return address + translate(offset);
+    }
+
+    @Override
+    public long addressForWrite(long offset, long size) {
+        if (offset < start() || offset + size > realCapacity())
             throw new BufferOverflowException();
         return address + translate(offset);
     }
@@ -556,15 +573,15 @@ public class NativeBytesStore<Underlying>
     @Override
     @ForceInline
     public void nativeRead(long position, long address, long size) throws BufferUnderflowException {
-        // TODO add bounds checking.
-        memory.copyMemory(addressForRead(position), address, size);
+        // addressForRead does bounds checking.
+        memory.copyMemory(addressForRead(position, size), address, size);
     }
 
     @Override
     @ForceInline
     public void nativeWrite(long address, long position, long size) throws BufferOverflowException {
-        // TODO add bounds checking.
-        memory.copyMemory(address, addressForWrite(position), size);
+        // addressForWrite does bounds checking.
+        memory.copyMemory(address, addressForWrite(position, size), size);
     }
 
     void write8bit(long position, char[] chars, int offset, int length) {

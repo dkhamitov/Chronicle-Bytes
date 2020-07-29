@@ -344,7 +344,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
     }
 
     @Override
-    public long addressForRead(final long offset, final int buffer) throws UnsupportedOperationException, BufferUnderflowException {
+    public long addressForRead(final long offset, final long buffer) throws UnsupportedOperationException, BufferUnderflowException {
 //        throwExceptionIfClosed();
 
         if (bytesStore == null || !bytesStore.inside(offset, buffer))
@@ -359,6 +359,14 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
         if (bytesStore == null || !bytesStore.inside(offset))
             acquireNextByteStore0(offset, true);
         return bytesStore.addressForWrite(offset);
+    }
+
+    @Override
+    public long addressForWrite(long offset, long size) {
+        if (bytesStore == null || !bytesStore.inside(offset, size)) {
+            acquireNextByteStore0(offset, true);
+        }
+        return super.addressForWrite(offset, size);
     }
 
     @Override
@@ -697,7 +705,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
 
         if (Jvm.isJava9Plus()) {
             byte[] bytes = extractBytes((String) cs);
-            long address = addressForWrite(pos);
+            long address = addressForWrite(pos, length);
             Memory memory = OS.memory();
             int i = 0;
             non_ascii:
@@ -719,7 +727,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
             }
         } else {
             char[] chars = extractChars((String) cs);
-            long address = addressForWrite(pos);
+            long address = addressForWrite(pos, length);
             Memory memory = OS.memory();
             int i = 0;
             non_ascii:
