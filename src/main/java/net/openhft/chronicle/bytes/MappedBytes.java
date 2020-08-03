@@ -811,7 +811,7 @@ public class MappedBytes extends AbstractBytes<Void> implements Closeable {
 
     @Override
     public int peekUnsignedByte() {
-        throwExceptionIfClosed();
+        // throwExceptionIfClosed(); - issue #127
 
         if (bytesStore == null || !bytesStore.inside(readPosition, 1)) {
             acquireNextByteStore0(readPosition, false);

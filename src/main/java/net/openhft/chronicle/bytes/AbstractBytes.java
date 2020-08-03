@@ -382,6 +382,7 @@ public abstract class AbstractBytes<Underlying>
 
     @Override
     public int peekUnsignedByte() {
+        // throwExceptionIfClosed();
         return readPosition >= writePosition ? -1 : bytesStore.readUnsignedByte(readPosition);
     }
 
