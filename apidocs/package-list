@@ -1,5 +1,6 @@
 net.openhft.chronicle.bytes
 net.openhft.chronicle.bytes.algo
+net.openhft.chronicle.bytes.internal
 net.openhft.chronicle.bytes.pool
 net.openhft.chronicle.bytes.ref
 net.openhft.chronicle.bytes.util
